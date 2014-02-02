@@ -95,7 +95,7 @@ namespace MotifSeeker.Data
 			Console.WriteLine("Конвертация завершена. Осталось только сериализовать для последующего испольования.");
 			// сериализация его
 			var serL = chr.Serialize(chrPath + ".proto");
-			Console.WriteLine("Хромосома в новом представлении сериализована. Развер: " + serL + "B");
+			Console.WriteLine("Хромосома в новом представлении сериализована. Размер: " + serL + "B");
 			return chr;
 		}
 

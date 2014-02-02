@@ -39,7 +39,7 @@ namespace MotifSeeker.Data
 				for (int i = 0; i < 4; i++)
 				{
 					yield return (Nucleotide) (bb & 0x03);
-					if (cnt++ == Count)
+					if (++cnt == Count)
 						yield break;
 					bb = (byte)(bb >> 2);
 				}
@@ -59,20 +59,20 @@ namespace MotifSeeker.Data
 			var cnt = 0;
 			for (int i = packId; i < 4; i++)
 			{
-				ret[cnt] = (Nucleotide)((b >> (2*packId)) & 0x03);
-				if (cnt++ == Count)
+				ret[cnt] = (Nucleotide)((b >> (2*(i))) & 0x03);
+				if (++cnt == count)
 					break;
 			}
 			byteId++;
 
-			for (; byteId <= lastByteId; byteId++)
+			for (; byteId <= lastByteId && cnt != count; byteId++)
 			{
 				b = _data[byteId];
 				for (int i = 0; i < 4; i++)
 				{
-					if (cnt++ == Count)
-						break;
 					ret[cnt] = (Nucleotide)(b & 0x03);
+					if (++cnt == count)
+						break;
 					b = (byte) (b >> 2);
 				}
 			}
@@ -90,15 +90,16 @@ namespace MotifSeeker.Data
 			int skipHeader;
 			if (packId > 0)
 			{
-				skipHeader = 4 - packId;
+				
 				var itemHeader = items.Take(4 - packId).ToArray();
-				for (int i = packId; i < 4; i++)
+				skipHeader = itemHeader.Length;
+				for (int i = packId; i < 4 && i < itemHeader.Length+packId; i++)
 				{
-					var shift = 2*packId;
-					curByte = (byte) ((curByte | ~(0x03 << shift)) | ((int) itemHeader[i - packId] << shift));
+					var shift = 2*i;
+					curByte = (byte) ((curByte & ~(0x03 << shift)) | ((int) itemHeader[i - packId] << shift));
 				}
 				_data[byteId] = curByte;
-				Count += 4 - packId;
+				Count += skipHeader;
 				byteId++;
 				packId = 0;
 			}
