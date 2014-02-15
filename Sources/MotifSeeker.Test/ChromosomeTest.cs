@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using MotifSeeker.Data;
+using MotifSeeker.Data.Dna;
 using NUnit.Framework;
 
 namespace MotifSeeker.Test

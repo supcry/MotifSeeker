@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using ProtoBuf;
 
-namespace MotifSeeker.Data
+namespace MotifSeeker.Data.Dna
 {
 	/// <summary>
 	/// Хромосома в компактном представлении. 2 бита на нуклеотид.

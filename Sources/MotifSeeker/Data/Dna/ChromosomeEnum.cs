@@ -1,4 +1,4 @@
-﻿namespace MotifSeeker.Data
+﻿namespace MotifSeeker.Data.Dna
 {
 	public enum ChromosomeEnum
 	{

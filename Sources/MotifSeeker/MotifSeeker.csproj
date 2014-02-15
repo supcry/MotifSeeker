@@ -45,12 +45,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Class1.cs" />
-    <Compile Include="Data\Chromosome.cs" />
-    <Compile Include="Data\ChromosomeEnum.cs" />
-    <Compile Include="Data\Manager.cs" />
-    <Compile Include="Data\Nucleotide.cs" />
+    <Compile Include="Data\DNaseI\DNaseIManager.cs" />
+    <Compile Include="Data\DNaseI\ClassifiedRegion.cs" />
+    <Compile Include="Data\Dna\Chromosome.cs" />
+    <Compile Include="Data\Dna\ChromosomeEnum.cs" />
+    <Compile Include="Data\DNaseI\SensitivityResults.cs" />
+    <Compile Include="Data\Dna\ChrManager.cs" />
+    <Compile Include="Data\Dna\Nucleotide.cs" />
+    <Compile Include="LinqExt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
