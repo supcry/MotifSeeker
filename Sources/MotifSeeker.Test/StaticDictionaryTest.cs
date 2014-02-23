@@ -40,7 +40,7 @@ namespace MotifSeeker.Test
         public void _03_Ints()
         {
             var rnd = new Random(1);
-            const int count = 1000000;
+            const int count = 100000;
             var hs = new HashSet<int>();
             var pairs = Enumerable.Repeat(1, int.MaxValue)
                                   .Select(_ => new KeyValuePair<int, int>(rnd.Next(), rnd.Next()))

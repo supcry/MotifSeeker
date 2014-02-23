@@ -6,6 +6,7 @@ using System.Linq;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
+using MotifSeeker.Helpers;
 
 namespace Sandbox
 {
@@ -14,7 +15,9 @@ namespace Sandbox
 		static void Main(string[] args)
 		{
 
-            GetClassifiedExpData();
+		    BenchmarkDics();
+
+            //GetClassifiedExpData();
 		    
 			Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
@@ -54,6 +57,53 @@ namespace Sandbox
             var statN = exp1[ClassifiedRegion.MotifContainsStatus.NotPresent].Select(p => p.RawValue2).MinMeanMax();
             var statU = exp1[ClassifiedRegion.MotifContainsStatus.Unknown].Select(p => p.RawValue2).MinMeanMax();
             Debug.Assert(exp1.Count == 3);
+        }
+
+	    static void BenchmarkDics()
+	    {
+            var rnd = new Random(1);
+            const int count = 1000000;
+            var hs = new HashSet<int>();
+            var pairs = Enumerable.Repeat(1, int.MaxValue)
+                                  .Select(_ => new KeyValuePair<int, int>(rnd.Next(), rnd.Next()))
+                                  .Where(p => hs.Add(p.Key))
+                                  .Take(count)
+                                  .ToArray();
+
+            BenchmarkDictionary(pairs);
+            BenchmarkStaticDictionary(pairs);
+	    }
+
+        static void BenchmarkDictionary(ICollection<KeyValuePair<int, int>> data)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var dic = new Dictionary<int, int>(data.Count);
+            foreach (var d in data)
+                dic[d.Key] = d.Value;
+            sw.Stop();
+            var sw2 = new Stopwatch();
+            sw2.Start();
+            foreach (var d in data.Reverse())
+                if (d.Value != dic[d.Key])
+                    throw new Exception();
+            sw2.Stop();
+            Console.WriteLine("Dictionary: creation=" + sw.Elapsed + ", search=" + sw2.Elapsed);
+        }
+
+        static void BenchmarkStaticDictionary(ICollection<KeyValuePair<int, int>> data)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var dic = new StaticDictionary<int, int>(data);
+            sw.Stop();
+            var sw2 = new Stopwatch();
+            sw2.Start();
+            foreach (var d in data)
+                if(d.Value != dic[d.Key])
+                    throw new Exception();
+            sw2.Stop();
+            Console.WriteLine("StaticDictionary: creation=" + sw.Elapsed + ", search=" + sw2.Elapsed);
         }
 	}
 }

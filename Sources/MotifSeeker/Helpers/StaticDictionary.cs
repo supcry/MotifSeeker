@@ -22,7 +22,6 @@ namespace MotifSeeker.Helpers
         public StaticDictionary(ICollection<KeyValuePair<TKey, TValue>> pairs)
         {
             // Пока предполагаем, что дубликатов нет.
-
             _hashes = new uint[pairs.Count];
             _keys = new TKey[pairs.Count];
             _values = new TValue[pairs.Count];
@@ -30,14 +29,30 @@ namespace MotifSeeker.Helpers
             _ofsBitsCount = GetOfsBitsCount(pairs.Count);
             _ofs = new int[(int)Math.Round(Math.Pow(2, _ofsBitsCount))];
             int lastOfs = 0;
-            //int lastOfsPos = -1;
-            foreach (var t in pairs.Select(p => new Tuple<uint, TKey, TValue>((uint)p.Key.GetHashCode(), p.Key, p.Value)).OrderBy(p => p.Item1))
-            {
-                _hashes[i] = t.Item1;
-                _keys[i] = t.Item2;
-                _values[i] = t.Item3;
+
+            //foreach (var t in pairs.Select(p => new Tuple<uint, TKey, TValue>((uint)p.Key.GetHashCode(), p.Key, p.Value)).OrderBy(p => p.Item1))
+            //{
+            //    _hashes[i] = t.Item1;
+            //    _keys[i] = t.Item2;
+            //    _values[i] = t.Item3;
                 
-                var ofs = (int)(t.Item1 >> (sizeof(uint) * 8 - _ofsBitsCount));
+            //    var ofs = (int)(t.Item1 >> (sizeof(uint) * 8 - _ofsBitsCount));
+            //    if (lastOfs != ofs)
+            //    {
+            //        for (int j = lastOfs + 1; j <= ofs; j++)
+            //            _ofs[j] = i;
+            //        lastOfs = ofs;
+            //    }
+            //    i++;
+            //}
+
+            foreach (var t in pairs.Select(p => new KeyValuePair<uint, KeyValuePair<TKey, TValue>>((uint)p.Key.GetHashCode(), p)).OrderBy(p => p.Key))
+            {
+                _hashes[i] = t.Key;
+                _keys[i] = t.Value.Key;
+                _values[i] = t.Value.Value;
+
+                var ofs = (int)(t.Key >> (sizeof(uint) * 8 - _ofsBitsCount));
                 if (lastOfs != ofs)
                 {
                     for (int j = lastOfs + 1; j <= ofs; j++)
@@ -46,6 +61,7 @@ namespace MotifSeeker.Helpers
                 }
                 i++;
             }
+
             for (int j = lastOfs + 1; j < _ofs.Length; j++)
                 _ofs[j] = -1;
         }
@@ -161,10 +177,21 @@ namespace MotifSeeker.Helpers
         {
             get
             {
-                TValue ret;
-                if (TryGetValue(key, out ret))
-                    return ret;
-                throw new KeyNotFoundException();
+                var hash = (uint)key.GetHashCode();
+                var ofs = (int)(hash >> (sizeof(uint) * 8 - _ofsBitsCount));
+                int id = _ofs[ofs];
+                if (id != -1)
+                {
+                    while (_hashes[id] < hash)
+                        id++;
+                    while (_hashes[id] == hash)
+                    {
+                        if (_keys[id].Equals(key))
+                            return _values[id];
+                        id++;
+                    }
+                }
+                throw new KeyNotFoundException();;
             }
             set { throw new NotSupportedException(); }
         }
