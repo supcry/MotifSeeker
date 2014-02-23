@@ -52,6 +52,7 @@
     <Compile Include="Data\DNaseI\SensitivityResults.cs" />
     <Compile Include="Data\Dna\ChrManager.cs" />
     <Compile Include="Data\Dna\Nucleotide.cs" />
+    <Compile Include="Helpers\StaticDictionary.cs" />
     <Compile Include="LinqExt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
