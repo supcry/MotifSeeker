@@ -7,6 +7,7 @@ using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
 using MotifSeeker.Helpers;
+using MotifSeeker.Sfx;
 
 namespace Sandbox
 {
@@ -15,14 +16,37 @@ namespace Sandbox
 		static void Main(string[] args)
 		{
 
-		    BenchmarkDics();
-
-            //GetClassifiedExpData();
+            CheckSfxArrayBuilder();
 		    
 			Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 
 		}
+
+	    static void CheckSfxArrayBuilder()
+	    {
+	        try
+	        {
+	            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
+	            var builder = new SfxBuilder();
+	            for (int i = 2; i < chr.Count; i *= 2)
+	            {
+	                var sw = new Stopwatch();
+	                var pack = chr.GetPack(0, i);
+	                sw.Start();
+	                var tmp = builder.BuildOne(pack);
+	                sw.Stop();
+	                Console.WriteLine("count=" + i + ", time=" + sw.Elapsed);
+	            }
+	        }
+	        catch (Exception ex)
+	        {
+	            Console.WriteLine("ex=" + ex);
+	        }
+
+	        //var tmp = SfxManager.GetSfxArray(ChromosomeEnum.Chr1);
+            //Debug.Assert(tmp != null);
+	    }
 
 	    static void CheckChr1()
 	    {
