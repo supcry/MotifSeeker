@@ -1,181 +1,164 @@
-﻿using System;
-
-namespace MotifSeeker.Sfx
+﻿namespace MotifSeeker.Sfx
 {
-    /// <summary>
-    /// [ToDo] Переписать для случая замены uint->byte
-    /// </summary>
-    public class Radix
-    {
-        public uint[] Sort(uint[] sourceSufTab, uint[] labels, int realLength, int shift)
-        {
-            var bytesLength = labels.Length * sizeof(uint);
-            var bytes = new byte[bytesLength];
-            Buffer.BlockCopy(labels, 0, bytes, 0, bytesLength);
+	/// <summary>
+	/// Класс для постоения суффиксного массива.
+	/// </summary>
+	public class Radix
+	{
+		/// <summary>
+		/// Сортировка значений радиксом. Возвращает порядок отсортированных значений, не изменяя исходные данные.
+		/// </summary>
+		/// <param name="values">Значения для сортировки.</param>
+		/// <returns>Порядок отсортированных значений.</returns>
+		public static uint[] Sort(uint[] values)
+		{
+			var length = values.Length;
 
-            var resSufTab = new uint[realLength];
+			var labels = new uint[length * 2];
+			var tempLabels = new uint[length * 2];
 
+			var sorted = new uint[length];
 
-            if (shift != 0)
-                for (byte b = 0; b < 4; b++)
-                {
-                    SortByByte(sourceSufTab, resSufTab, bytes, realLength, b, shift);
-                    var temp = resSufTab;
-                    resSufTab = sourceSufTab;
-                    sourceSufTab = temp;
-                }
+			for (uint i = 0; i < length; i++)
+			{
+				labels[i] = values[i];
+				sorted[i] = i;
+			}
 
-            for (byte b = 0; b < 4; b++)
-            {
-                SortByByte(sourceSufTab, resSufTab, bytes, realLength, b, 0);
-                var temp = resSufTab;
-                resSufTab = sourceSufTab;
-                sourceSufTab = temp;
-            }
+			RadixSort(ref sorted, labels, uint.MaxValue);
+			var maxLabel = ReLabelling(ref labels, ref tempLabels, sorted, 0);
+			var p = 1;
+			while (maxLabel < length - 1)
+			{
+				RadixSortPair(ref sorted, labels, maxLabel, p);
+				maxLabel = ReLabelling(ref labels, ref tempLabels, sorted, p);
+				p *= 2;
+			}
 
-            return sourceSufTab;
-        }
+			return sorted;
 
-        public void SortByByte(uint[] sourceSufTab, uint[] resSufTab, byte[] bytes, int realLength, byte b, int shift)
-        {
-            var count = new int[256];
-            var index = new int[256];
-
-            //посчитаем количество различных байтов
-            for (int i = 0; i < realLength; i++)
-            {
-                var idx = sourceSufTab[i] + shift;
-                var byteIdx = idx * 4 + b;
-                var val = bytes[byteIdx];
-                count[val]++;
-            }
-            //затем их смещения
-            index[0] = 0;
-            for (int i = 0; i < 255; i++)
-                index[i + 1] = index[i] + count[i];
-
-            //а теперь запишем новый порядок.
-            for (uint i = 0; i < realLength; i++)
-            {
-                var idx = sourceSufTab[i] + shift;
-                var byteIdx = idx * 4 + b;
-                var val = bytes[byteIdx];
-                var ofs = index[val]++;
-                resSufTab[ofs] = sourceSufTab[i];
-            }
-        }
-
-        /// <summary>
-        /// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
-        /// </summary>
-        /// <param name="suftab">Суффиксный массив</param>
-        /// <param name="labels">Хеши хешей.</param>
-        /// <param name="maxLabel">Количество различных хешей.</param>
-        /// <param name="depth">Глубина суффикса, по которой происходит сортировка</param>
-        public static unsafe void RadixSort(ref uint[] suftab, uint[] labels, uint maxLabel, int depth = 0)
-        {
-            var length = suftab.Length;
-            var bb = 1;
-            var resSuftab = new uint[length];
-
-            fixed (uint* pSt = suftab)
-            fixed (uint* pLabels = labels)
-            fixed (uint* pRst = resSuftab)
-            {
-                var pSuftab = pSt;
-                var pResSuftab = pRst;
+		}
 
 
-                for (int i = 0; i < 4; i++)
-                {
-                    if (maxLabel <= bb - 1)
-                        break;
+		/// <summary>
+		/// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
+		/// </summary>
+		/// <param name="sorted">Порядок значений</param>
+		/// <param name="labels">Значения</param>
+		/// <param name="maxLabel">Количество уникальных значений ( в данном случае суффиксов ).</param>
+		/// <param name="depth">Смещение в сортируемых значениях (глубина суффикса), по которому происходит сортировка</param>
+		public static unsafe void RadixSort(ref uint[] sorted, uint[] labels, uint maxLabel, int depth = 0)
+		{
+			var length = sorted.Length;
+			var bb = 1;
+			var resSuftab = new uint[length];
 
-                    RadixPass(pSuftab, pResSuftab, pLabels, i + depth * 4, length);
-
-                    var temp = pResSuftab;
-                    pResSuftab = pSuftab;
-                    pSuftab = temp;
-
-                    bb = bb << 8;
-                }
-            }
-            if (bb >> 8 == 1 || bb >> 24 == 1)
-                suftab = resSuftab;
-        }
-
-        /// <summary>
-        /// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
-        /// </summary>
-        /// <param name="suftab">Суффиксный массив</param>
-        /// <param name="labels">Хеши хешей.</param>
-        /// <param name="maxLabel">Количество различных хешей.</param>
-        /// <param name="depth">Глубина суффикса, по которой происходит сортировка</param>
-        public static void RadixSortPair(ref uint[] suftab, uint[] labels, uint maxLabel, int depth)
-        {
-            RadixSort(ref suftab, labels, maxLabel, depth);
-            RadixSort(ref suftab, labels, maxLabel);
-        }
-
-        public static uint ReLabelling(int hashesLength, ref uint[] labels, uint[] suftab, int p, ref uint[] tempLabels)
-        {
-            uint label = 0;
-            tempLabels[suftab[0]] = label;
-            for (uint i = 1; i < hashesLength; i++)
-            {
-                if (labels[suftab[i] + p] != labels[suftab[i - 1] + p] || labels[suftab[i]] != labels[suftab[i - 1]])
-                    label++;
-                tempLabels[suftab[i]] = label;
-            }
-
-            var t = labels;
-            labels = tempLabels;
-            tempLabels = t;
-
-            return label;
-        }
-
-        /// <summary>
-        /// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
-        /// </summary>
-        /// <param name="suftab">Исходный суффиксный массив.</param>
-        /// <param name="resSuftab">Результат сортировки.</param>
-        /// <param name="labels">Хеши.</param>
-        /// <param name="shift">Сдвиг в байтах.</param>
-        /// <param name="length">Длина текста.</param>
-        private static unsafe void RadixPass(uint* suftab, uint* resSuftab, uint* labels, int shift, int length)
-        {
-
-            var bytes = (byte*)labels;
-
-            var count = new int[256];
-            var index = new int[256];
-
-            //посчитаем количество различных байтов
-            //for (int i = 0; i < realLength; i++)
-            //{
-            //    var idx = sourceSufTab[i] + shift;
-            //    var byteIdx = idx * 4 + b;
-            //    var val = bytes[byteIdx];
-            //    count[val]++;
-            //}
-            for (int i = 0; i < length; i++)
-                count[*(bytes + (*(suftab + i)) * 4 + shift)]++;
+			fixed (uint* pSt = sorted)
+			fixed (uint* pLabels = labels)
+			fixed (uint* pRst = resSuftab)
+			{
+				var pSuftab = pSt;
+				var pResSuftab = pRst;
 
 
-            index[0] = 0;
-            for (int i = 0; i < 255; i++)
-                index[i + 1] = index[i] + count[i];
+				for (int i = 0; i < 4; i++)
+				{
+					if (maxLabel <= bb - 1)
+						break;
 
-            for (uint i = 0; i < length; i++)
-            {
-                //var byteIdx = bytes + ((*(suftab + i))*4 + shift);
-                //var tabIdx = index[byteIdx]++;
-                //resSuftab[tabIdx] = suftab[i];
-                resSuftab[index[*(bytes + ((*(suftab + i)) * 4 + shift))]++] = suftab[i];
-            }
-        }
+					RadixPass(pSuftab, pResSuftab, pLabels, i + depth * sizeof(uint), length);
+
+					var temp = pResSuftab;
+					pResSuftab = pSuftab;
+					pSuftab = temp;
+
+					bb = bb << 8;
+				}
+			}
+			if (bb >> 8 == 1 || bb >> 24 == 1)
+				sorted = resSuftab;
+		}
+
+		/// <summary>
+		/// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
+		/// </summary>
+		/// <param name="sorted">Порядок значений</param>
+		/// <param name="labels">Значения</param>
+		/// <param name="maxLabel">Количество уникальных значений ( в данном случае суффиксов ).</param>
+		/// <param name="depth">Смещение в сортируемых значениях (глубина суффикса), по которому происходит сортировка</param>
+		public static void RadixSortPair(ref uint[] sorted, uint[] labels, uint maxLabel, int depth)
+		{
+			RadixSort(ref sorted, labels, maxLabel, depth);
+			RadixSort(ref sorted, labels, maxLabel);
+		}
+
+		/// <summary>
+		/// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
+		/// </summary>
+		/// <param name="sorted">Исходный порядок</param>
+		/// <param name="resSorted">Порядок по отсортированным значеням.</param>
+		/// <param name="labels">Сортируемые значения.</param>
+		/// <param name="shift">Сдвиг в байтах.</param>
+		/// <param name="length">Длина текста.</param>
+		private static unsafe void RadixPass(uint* sorted, uint* resSorted, uint* labels, int shift, int length)
+		{
+
+			var bytes = (byte*)labels;
+
+			var count = new int[256];
+			var index = new int[256];
+
+			//посчитаем количество различных байтов
+			//for (int i = 0; i < realLength; i++)
+			//{
+			//    var idx = sourceSufTab[i] + shift;
+			//    var byteIdx = idx * 4 + b;
+			//    var val = bytes[byteIdx];
+			//    count[val]++;
+			//}
+			for (int i = 0; i < length; i++)
+				count[*(bytes + (*(sorted + i)) * 4 + shift)]++;
 
 
-    }
+			index[0] = 0;
+			for (int i = 0; i < 255; i++)
+				index[i + 1] = index[i] + count[i];
+
+			for (uint i = 0; i < length; i++)
+			{
+				//var byteIdx = bytes + ((*(suftab + i))*4 + shift);
+				//var tabIdx = index[byteIdx]++;
+				//resSuftab[tabIdx] = suftab[i];
+				resSorted[index[*(bytes + ((*(sorted + i)) * 4 + shift))]++] = sorted[i];
+			}
+		}
+
+		/// <summary>
+		/// Возвращает количество уникальных суффиксов. 
+		/// Перезаписывает исходных значения в соответсвии с их новым порядком ( массив sorted ),
+		/// производя сравнение двух соседних суффиксов.
+		/// </summary>
+		/// <param name="labels">Сортируемые данные</param>
+		/// <param name="tempLabels">Временный массив</param>
+		/// <param name="sorted">Массив, содержащий порядок значений label</param>
+		/// <param name="p">Глубина суффикса</param>
+		/// <returns>Количество уникальных суффиксов</returns>
+		private static uint ReLabelling(ref uint[] labels, ref uint[] tempLabels, uint[] sorted, int p)
+		{
+			var length = sorted.Length;
+			uint label = 0;
+			tempLabels[sorted[0]] = label;
+			for (uint i = 1; i < length; i++)
+			{
+				if (labels[sorted[i] + p] != labels[sorted[i - 1] + p] || labels[sorted[i]] != labels[sorted[i - 1]])
+					label++;
+				tempLabels[sorted[i]] = label;
+			}
+			var t = labels;
+			labels = tempLabels;
+			tempLabels = t;
+
+			return label;
+		}
+	}
 }

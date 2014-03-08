@@ -18,7 +18,7 @@ namespace Sandbox
 
             CheckSfxArrayBuilder();
 		    
-			Console.WriteLine("Ok\nPress any key to exit");
+			 Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 
 		}

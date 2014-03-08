@@ -59,6 +59,7 @@
     <Compile Include="Sfx\HashKey.cs" />
     <Compile Include="Sfx\LcpValue.cs" />
     <Compile Include="Sfx\Pointer.cs" />
+    <Compile Include="Sfx\RadixByte.cs" />
     <Compile Include="Sfx\Radix.cs" />
     <Compile Include="Sfx\SfxArray.cs" />
     <Compile Include="Sfx\SfxBuilder.cs" />

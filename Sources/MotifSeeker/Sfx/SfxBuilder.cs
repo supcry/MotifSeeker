@@ -15,9 +15,9 @@ namespace MotifSeeker.Sfx
 
         public SfxArray BuildOne(Nucleotide[] fragments)
         {
-            var tmp = new uint[fragments.Length + 1];
+            var tmp = new byte[fragments.Length + 1];
             for (int i = 0; i < fragments.Length; i++)
-                tmp[i] = (uint)fragments[i];
+                tmp[i] = (byte)fragments[i];
             tmp[tmp.Length - 1] = 4;
             var sfx = new SfxArray(tmp);
             return sfx;
