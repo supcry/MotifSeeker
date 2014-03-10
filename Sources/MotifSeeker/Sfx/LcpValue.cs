@@ -3,11 +3,11 @@
     /// <summary>
     /// Значения для хештаблицы. Хранит интервал и минимальную длину общего префикса суфиксов (lcp)
     /// </summary>
-    public class LcpValue
+    public struct LcpValue
     {
-        public int Lcp;
-        public int Left;
-        public int Right;
+        public readonly int Lcp;
+        public readonly int Left;
+        public readonly int Right;
 
         public LcpValue(int lcp, int left, int right)
         {

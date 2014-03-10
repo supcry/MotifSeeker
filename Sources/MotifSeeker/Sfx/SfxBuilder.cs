@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using MotifSeeker.Data.Dna;
 
 namespace MotifSeeker.Sfx
@@ -8,9 +10,21 @@ namespace MotifSeeker.Sfx
     /// </summary>
     public class SfxBuilder
     {
-        public SfxArray BuildMany(Nucleotide[][] fragments)
+        public SfxArray BuildMany(ICollection<Nucleotide[]> fragments)
         {
-            throw new NotImplementedException();
+            var tmp = new byte[fragments.Count + fragments.Sum(p => p.Length)];
+            int i = 0;
+            foreach (var fragment in fragments)
+            {
+                foreach (var nucleotide in fragment)
+                {
+                    tmp[i++] = (byte) nucleotide;
+                }
+                tmp[i++] = (byte)Nucleotide.End;
+            }
+            tmp[i - 1]++;
+            var sfx = new SfxArray(tmp);
+            return sfx;
         }
 
         public SfxArray BuildOne(Nucleotide[] fragments)
@@ -18,7 +32,7 @@ namespace MotifSeeker.Sfx
             var tmp = new byte[fragments.Length + 1];
             for (int i = 0; i < fragments.Length; i++)
                 tmp[i] = (byte)fragments[i];
-            tmp[tmp.Length - 1] = 4;
+            tmp[tmp.Length - 1] = (byte)Nucleotide.End;
             var sfx = new SfxArray(tmp);
             return sfx;
         }

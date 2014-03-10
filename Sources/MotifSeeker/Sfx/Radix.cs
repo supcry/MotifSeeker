@@ -1,4 +1,6 @@
-﻿namespace MotifSeeker.Sfx
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace MotifSeeker.Sfx
 {
 	/// <summary>
 	/// Класс для постоения суффиксного массива.
@@ -38,6 +40,35 @@
 			return sorted;
 
 		}
+
+        public static uint[] Sort(byte[] values)
+        {
+            var length = values.Length;
+
+            var labels = new uint[length * 2];
+            var tempLabels = new uint[length * 2];
+
+            var sorted = new uint[length];
+
+            for (uint i = 0; i < length; i++)
+            {
+                labels[i] = values[i];
+                sorted[i] = i;
+            }
+
+            RadixSortB(ref sorted, labels, uint.MaxValue);
+            var maxLabel = ReLabelling(ref labels, ref tempLabels, sorted, 0);
+            var p = 1;
+            while (maxLabel < length - 1)
+            {
+                RadixSortPair(ref sorted, labels, maxLabel, p);
+                maxLabel = ReLabelling(ref labels, ref tempLabels, sorted, p);
+                p *= 2;
+            }
+
+            return sorted;
+
+        }
 
 
 		/// <summary>
@@ -79,6 +110,24 @@
 				sorted = resSuftab;
 		}
 
+        public static unsafe void RadixSortB(ref uint[] sorted, uint[] labels, uint maxLabel)
+        {
+            var length = sorted.Length;
+            var resSuftab = new uint[length];
+
+            fixed (uint* pSt = sorted)
+            fixed (uint* pLabels = labels)
+            fixed (uint* pRst = resSuftab)
+            {
+                var pSuftab = pSt;
+                var pResSuftab = pRst;
+
+                RadixPass(pSuftab, pResSuftab, pLabels, 0, length);
+            }
+
+            sorted = resSuftab;
+        }
+
 		/// <summary>
 		/// Сортировка суффиксов исходного текста. Суффиксы задаются индексами их начала.
 		/// </summary>
@@ -109,28 +158,17 @@
 			var index = new int[256];
 
 			//посчитаем количество различных байтов
-			//for (int i = 0; i < realLength; i++)
-			//{
-			//    var idx = sourceSufTab[i] + shift;
-			//    var byteIdx = idx * 4 + b;
-			//    var val = bytes[byteIdx];
-			//    count[val]++;
-			//}
-			for (int i = 0; i < length; i++)
-				count[*(bytes + (*(sorted + i)) * 4 + shift)]++;
+		    var bytes2 = bytes + shift;
+			for (int i = 0; i < length; ++i)
+				count[*(bytes2 + (*(sorted + i)) * 4)]++;
 
 
 			index[0] = 0;
-			for (int i = 0; i < 255; i++)
+			for (int i = 0; i < 255; ++i)
 				index[i + 1] = index[i] + count[i];
 
-			for (uint i = 0; i < length; i++)
-			{
-				//var byteIdx = bytes + ((*(suftab + i))*4 + shift);
-				//var tabIdx = index[byteIdx]++;
-				//resSuftab[tabIdx] = suftab[i];
-				resSorted[index[*(bytes + ((*(sorted + i)) * 4 + shift))]++] = sorted[i];
-			}
+		    for (uint i = 0; i < length; ++i)
+		        resSorted[index[*(bytes2 + (*(sorted + i))*4)]++] = sorted[i];
 		}
 
 		/// <summary>

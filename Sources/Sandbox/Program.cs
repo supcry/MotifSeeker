@@ -16,10 +16,10 @@ namespace Sandbox
 		static void Main(string[] args)
 		{
 
-            CheckSfxArrayBuilder();
-		    
+            //CheckSfxArrayBuilder();
+		    CheckSfxArrayBuilderForClass1();
 			 Console.WriteLine("Ok\nPress any key to exit");
-			Console.ReadKey();
+			//Console.ReadKey();
 
 		}
 
@@ -37,16 +37,51 @@ namespace Sandbox
 	                var tmp = builder.BuildOne(pack);
 	                sw.Stop();
 	                Console.WriteLine("count=" + i + ", time=" + sw.Elapsed);
+
+	                if (i > 1000000)
+	                    break;
 	            }
 	        }
 	        catch (Exception ex)
 	        {
 	            Console.WriteLine("ex=" + ex);
 	        }
-
-	        //var tmp = SfxManager.GetSfxArray(ChromosomeEnum.Chr1);
-            //Debug.Assert(tmp != null);
 	    }
+
+        static void CheckSfxArrayBuilderForClass1()
+        {
+            try
+            {
+                var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
+                var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
+                var exp = DNaseIManager.GetClassifiedRegions(ChromosomeEnum.Chr1, pars1, false)[ClassifiedRegion.MotifContainsStatus.Present];
+                var parts = new List<Nucleotide[]>();
+                int len = 0;
+                int partId = 0;
+                var builder = new SfxBuilder();
+                SfxArray sfx;
+                for (int i = 2; i < chr.Count && partId < exp.Count; i *= 2)
+                {
+                    while (len < i && partId < exp.Count)
+                    {
+                        var region = exp[partId++];
+                        len += region.EndPos - region.StartPos;
+                        parts.Add(chr.GetPack(region.StartPos, region.EndPos - region.StartPos));
+                    }
+                    var sw = new Stopwatch();
+                    sw.Start();
+                    sfx = builder.BuildMany(parts);
+                    sw.Stop();
+                    Console.WriteLine("len=" + i + ",\tparts=" + partId + ",\ttime=" + sw.Elapsed);
+                }
+                sfx.PointerDown().GetAllCites(new Pointer(0,0,100), )
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ex=" + ex);
+            }
+        }
 
 	    static void CheckChr1()
 	    {

@@ -54,7 +54,7 @@ namespace MotifSeeker.Sfx
 		/// <returns></returns>
 		public uint[] BuildSuftab()
 		{
-			return RadixByte.Sort(_hashes);
+			return Radix.Sort(_hashes);
 		}
 
 		/// <summary>
@@ -106,23 +106,26 @@ namespace MotifSeeker.Sfx
 			var stack = new Stack<LcpTree>();
 			var lastInterval = LcpTree.NotDefinedInterval();
 
-			stack.Push(LcpTree.NotDefinedInterval());
+            var peek = LcpTree.NotDefinedInterval();
+            stack.Push(peek);
 
 			for (int i = 1; i < lenght; i++)
 			{
 				var leftBound = i - 1;
-				while (_lcptab[i] < stack.Peek().Lcp)
+			    
+				while (_lcptab[i] < peek.Lcp)
 				{
-					stack.Peek().RightBound = i - 1;
+                    peek.RightBound = i - 1;
 					lastInterval = stack.Pop();
+				    peek = stack.Peek();
 					leftBound = lastInterval.LeftBound;
-					if (_lcptab[i] <= stack.Peek().Lcp)
+                    if (_lcptab[i] <= peek.Lcp)
 					{
-						stack.Peek().ChildList.Add(lastInterval);
+                        peek.ChildList.Add(lastInterval);
 						lastInterval = LcpTree.NotDefinedInterval();
 					}
 				}
-				if (_lcptab[i] > stack.Peek().Lcp)
+                if (_lcptab[i] > peek.Lcp)
 				{
 					if (lastInterval.RightBound != NotDefined)
 					{
@@ -131,6 +134,7 @@ namespace MotifSeeker.Sfx
 					}
 					else
 						stack.Push(new LcpTree(_lcptab[i], leftBound, NotDefined, new List<LcpTree>()));
+				    peek = stack.Peek();
 				}
 			}
 
@@ -145,7 +149,7 @@ namespace MotifSeeker.Sfx
 			out Dictionary<Interval, Interval> linkstab)
 		{
 			var root = BuildLcpTree();
-			var dic = new Dictionary<HashKey, LcpValue>((int)(HashesLength * 2.5));
+			var dic = new Dictionary<HashKey, LcpValue>(HashesLength * 2);
 
 			var maxLcp = Lcptab.Max() + 1;
 			var lcpIntervals = new List<Interval>[maxLcp];
@@ -162,7 +166,7 @@ namespace MotifSeeker.Sfx
 
 
 		private void BuildHashTableCustomStack(LcpTree root, List<Interval>[] lcpIntervals,
-			Dictionary<HashKey, LcpValue> dictionary)
+			                                   Dictionary<HashKey, LcpValue> dictionary)
 		{
 			var stack = new Stack<KeyValuePair<LcpTree, int>>();
 			stack.Push(new KeyValuePair<LcpTree, int>(root, 0));
@@ -176,7 +180,7 @@ namespace MotifSeeker.Sfx
 				{
 					lcpIntervals[tree.Lcp].Add(new Interval(tree.LeftBound, tree.RightBound));
 					AddInterval(tree, dictionary);
-					AddSingleHashes(tree, dictionary);
+					//AddSingleHashes(tree, dictionary);
 				}
 				if (tree.ChildList.Count > childId)
 				{
