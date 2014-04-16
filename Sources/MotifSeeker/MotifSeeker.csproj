@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Data\DNaseI\DNaseIManager.cs" />
     <Compile Include="Data\DNaseI\ClassifiedRegion.cs" />
+    <Compile Include="Data\DNaseI\NarrowPeaksMerger.cs" />
     <Compile Include="Data\Dna\Chromosome.cs" />
     <Compile Include="Data\Dna\ChromosomeEnum.cs" />
     <Compile Include="Data\DNaseI\SensitivityResults.cs" />

@@ -15,9 +15,17 @@ namespace Sandbox
 	{
 		static void Main(string[] args)
 		{
+			var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10);
+			var items = flow.ToArray();
+			var totalCount = items.Sum(p => p.Count);
+			//var a = items[334];
+			//var b = items[335];
+			//var s = MergedNarrowPeak.GetMergeStatus(a, b);
 
+			var byAvg = items.OrderByDescending(p => p.AvgValue1).Where(p => !p.StrictMerge).ToArray();
+			var byCnt = items.OrderByDescending(p => p.Count).Where(p => !p.StrictMerge).ToArray();
             //CheckSfxArrayBuilder();
-		    CheckSfxArrayBuilderForClass1();
+		    //CheckSfxArrayBuilderForClass1();
 			 Console.WriteLine("Ok\nPress any key to exit");
 			//Console.ReadKey();
 
@@ -53,7 +61,7 @@ namespace Sandbox
             try
             {
                 var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
-                var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
+                var pars1 = new Dictionary<string, string> { { "type", "narrowPeak" }, {"view", "Peaks"}, { "cell", "A549" }, { "replicate", "1" } };
                 var exp = DNaseIManager.GetClassifiedRegions(ChromosomeEnum.Chr1, pars1, false)[ClassifiedRegion.MotifContainsStatus.Present];
                 var parts = new List<Nucleotide[]>();
                 int len = 0;
@@ -74,7 +82,7 @@ namespace Sandbox
                     sw.Stop();
                     Console.WriteLine("len=" + i + ",\tparts=" + partId + ",\ttime=" + sw.Elapsed);
                 }
-                sfx.PointerDown().GetAllCites(new Pointer(0,0,100), )
+                //sfx.PointerDown().GetAllCites(new Pointer(0,0,100), )
 
             }
             catch (Exception ex)

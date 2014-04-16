@@ -86,6 +86,77 @@ namespace MotifSeeker.Data.DNaseI
 	        return flist;
 	    }
 
+		private static string DownloadFile(FileList.Item item, string dir)
+		{
+			
+			var path = Path.Combine(dir, item.FileName);
+			if (!File.Exists(path))
+			{
+				var url = SrcBaseRoot + item.FileName;
+				Console.Write("w");
+				try
+				{
+					using (var c = new WebClient())
+						c.DownloadFile(url, path);
+				}
+				catch (Exception ex)
+				{
+					File.Delete(path);
+					throw new Exception("Не удалось загрузить файл", ex);
+				}
+			}
+			return path;
+		}
+
+		private static string UnpackFile(string pathGz)
+		{
+			var fpath = pathGz.Substring(0, pathGz.Length - 3);
+			if (File.Exists(fpath))
+				return fpath;
+			Console.Write("z");
+			using (var gf = File.OpenRead(pathGz))
+			{
+				using (var gz = new GZipStream(gf, CompressionMode.Decompress))
+				{
+					var tmp = new byte[1024 * 1024 * 10];
+					using (var f = File.Create(fpath))
+					{
+						int l;
+						while ((l = gz.Read(tmp, 0, tmp.Length)) > 0)
+						{
+							f.Write(tmp, 0, l);
+							if (l != tmp.Length)
+								break;
+						}
+						f.Flush();
+					}
+				}
+			}
+			return fpath;
+		}
+
+		public static IEnumerable<string> GetFiles(Dictionary<string, string> filterAttrs, int maxCount = int.MaxValue)
+		{
+			string type;
+			if (!filterAttrs.TryGetValue("type", out type) || !new[] { "narrowPeak", "broadPeak" }.Contains(type))
+				throw new ArgumentException("Тип данных эксперимента должен быть narrowPeak либо broadPeak.");
+			var flistPath = GetFileListPath();
+			var flist = new FileList(flistPath);
+			var dir = GetDir();
+			int cnt = 0;
+			foreach (var item in flist.Items.Where(p => p.Filter(filterAttrs)))
+			{
+				Console.Write("[" + ++cnt + "], " + item.FileName + ":");
+				var path = DownloadFile(item, dir);
+				if (path.EndsWith(".gz"))
+					path = UnpackFile(path);
+				Console.WriteLine();
+				yield return path;
+				if(cnt == maxCount)
+					yield break;
+			}
+		}
+
 	    public static SensitivityResults GetSensitivityResults(Dictionary<string, string> filterAttrs, ChromosomeEnum? chr)
 	    {
 	        string type;
