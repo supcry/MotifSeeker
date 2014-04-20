@@ -24,17 +24,17 @@ namespace MotifSeeker.Data.DNaseI
 
 		private static IEnumerable<MergedNarrowPeak> GetMergedNarrowPeaks(string[] filePaths, ChromosomeEnum? onlyChr)
 		{
-			var tmp = filePaths.Select(p => GetNarrowPeak(p, onlyChr)).ToArray();
+			var tmp = filePaths.Select((p,i) => GetNarrowPeak(p, onlyChr, (short)i)).ToArray();
 			return Merge(tmp);
 		}
 
 		/// <summary>
 		/// Возвращает отсортированные в порядке положения участки с пиками.
 		/// </summary>
-		private static IEnumerable<MergedNarrowPeak> GetNarrowPeak(string filePath, ChromosomeEnum? onlyChr)
+		private static IEnumerable<MergedNarrowPeak> GetNarrowPeak(string filePath, ChromosomeEnum? onlyChr, short cellId)
 		{
 			return File.ReadLines(filePath)
-						.Select(p => new MergedNarrowPeak(p))
+						.Select(p => new MergedNarrowPeak(p, cellId))
 						.Where(p =>  !onlyChr.HasValue || p.Chr == onlyChr.Value);
 		}
 
@@ -116,6 +116,8 @@ namespace MotifSeeker.Data.DNaseI
 		/// </summary>
 		public readonly ChromosomeEnum Chr;
 
+        public readonly short[] CellIds;
+
 		/// <summary>
 		/// Начало региона (с 0)
 		/// </summary>
@@ -175,13 +177,14 @@ namespace MotifSeeker.Data.DNaseI
 				sb.Append("n,");
 			sb.Append("pos:{" + StartPos + "," + EndPos + "},");
 			sb.Append("avg:" + Math.Round(AvgValue1,1));
-			
+
+		    sb.Append("cells:{" + string.Join(";", CellIds) + "}");
 			return sb.ToString();
 		}
 
 		public MergedNarrowPeak(ChromosomeEnum chr, int start, int end,
 			                    IEnumerable<float> v1, IEnumerable<float> v2,
-			                    int minStart, int maxStart, int minEnd, int maxEnd)
+                                int minStart, int maxStart, int minEnd, int maxEnd, short[] cellIds)
 		{
             Debug.Assert(start >= 0);
             Debug.Assert(end > 0);
@@ -194,6 +197,7 @@ namespace MotifSeeker.Data.DNaseI
 			EndPosMax = maxEnd;
 			StartPosMax = maxStart;
 			EndPosMin = minEnd;
+		    CellIds = cellIds;
 		}
 
 		public static MergedNarrowPeak Merge(MergedNarrowPeak a, MergedNarrowPeak b)
@@ -205,10 +209,11 @@ namespace MotifSeeker.Data.DNaseI
 			var maxStart = Math.Max(a.StartPosMax, b.StartPosMax);
 			var minEnd = Math.Min(a.EndPosMin, b.EndPosMin);
 			var maxEnd = Math.Max(a.EndPosMax, b.EndPosMax);
-			return new MergedNarrowPeak(a.Chr, start, end, a.Values1.Concat(b.Values1), a.Values2.Concat(b.Values2), minStart, maxStart, minEnd, maxEnd);
+            return new MergedNarrowPeak(a.Chr, start, end, a.Values1.ConcatArray(b.Values1), a.Values2.ConcatArray(b.Values2),
+                                        minStart, maxStart, minEnd, maxEnd, a.CellIds.ConcatArray(b.CellIds));
 		}
 
-		public MergedNarrowPeak(string line)
+		public MergedNarrowPeak(string line, short cellId)
 		{
 			//chr1	566760	566910	.	0	.	339	157.884	-1	-1
 			var parts = line.Split('\t');
@@ -218,6 +223,7 @@ namespace MotifSeeker.Data.DNaseI
 			EndPosMin = EndPosMax = EndPos = int.Parse(parts[2]);
 			Values1 = new []{float.Parse(parts[6], new NumberFormatInfo { CurrencyDecimalSeparator = "." })};
 			Values2 = new []{float.Parse(parts[7], new NumberFormatInfo { CurrencyDecimalSeparator = "." })};
+		    CellIds = new[] {cellId};
 		}
 
 		private MergedNarrowPeak() { }

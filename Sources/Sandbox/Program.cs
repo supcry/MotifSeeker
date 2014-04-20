@@ -22,7 +22,7 @@ namespace Sandbox
 
             //  1. получить последовательности участков с пиками и без пиков
 		    var t = DateTime.Now;
-            var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10);
+            var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10).ToArray();
 		    var peakRegions = new List<MergedNarrowPeak>();
 		    var nonRegions = new List<KeyValuePair<int, int>>();
 
