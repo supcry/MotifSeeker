@@ -16,7 +16,7 @@
             Right = right;
         }
 
-        public LcpValue(SfxArray.LcpTree interval)
+        public LcpValue(LcpTree interval)
         {
             Lcp = interval.Lcp;
             Left = interval.LeftBound;

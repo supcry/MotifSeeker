@@ -58,13 +58,15 @@
     <Compile Include="LinqExt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sfx\HashKey.cs" />
+    <Compile Include="Sfx\LcpTree.cs" />
     <Compile Include="Sfx\LcpValue.cs" />
     <Compile Include="Sfx\Pointer.cs" />
     <Compile Include="Sfx\Radix.cs" />
-    <Compile Include="Sfx\SfxArray.cs" />
-    <Compile Include="Sfx\SfxBuilder.cs" />
-    <Compile Include="Sfx\SfxManager.cs" />
+    <Compile Include="Sfx\SuffixArray.cs" />
+    <Compile Include="Sfx\SuffixBuilder.cs" />
+    <Compile Include="Sfx\SuffixManager.cs" />
     <Compile Include="Sfx\SuffixSubstr.cs" />
+    <Compile Include="Sfx\TextComparer.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

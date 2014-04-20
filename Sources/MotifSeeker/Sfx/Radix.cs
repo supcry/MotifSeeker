@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace MotifSeeker.Sfx
+﻿namespace MotifSeeker.Sfx
 {
 	/// <summary>
 	/// Класс для постоения суффиксного массива.

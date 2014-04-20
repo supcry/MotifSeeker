@@ -21,7 +21,7 @@ namespace MotifSeeker.Sfx
 	        _hashCode = (int) ((Left + Right << 16) | Hash);
         }
 
-        public HashKey(byte hash, SfxArray.LcpTree interval)
+        public HashKey(byte hash, LcpTree interval)
         {
             Hash = hash;
             Left = interval.LeftBound;

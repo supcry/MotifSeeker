@@ -36,7 +36,7 @@ namespace Sandbox
 	        try
 	        {
 	            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
-	            var builder = new SfxBuilder();
+	            var builder = new SuffixBuilder();
 	            for (int i = 2; i < chr.Count; i *= 2)
 	            {
 	                var sw = new Stopwatch();
@@ -66,8 +66,8 @@ namespace Sandbox
                 var parts = new List<Nucleotide[]>();
                 int len = 0;
                 int partId = 0;
-                var builder = new SfxBuilder();
-                SfxArray sfx;
+                var builder = new SuffixBuilder();
+                SuffixArray sfx;
                 for (int i = 2; i < chr.Count && partId < exp.Count; i *= 2)
                 {
                     while (len < i && partId < exp.Count)
