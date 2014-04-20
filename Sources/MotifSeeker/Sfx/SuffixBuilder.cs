@@ -7,18 +7,31 @@ namespace MotifSeeker.Sfx
     /// <summary>
     /// Построитель суфиксного массива по последовательности DNA или нескольких её цепочек.
     /// </summary>
-    public class SuffixBuilder
+    public static class SuffixBuilder
     {
-        public SuffixArray BuildMany(ICollection<Nucleotide[]> fragments)
+        public static TextComparer BuildMany2(ICollection<Nucleotide[]> fragments)
         {
             var tmp = new byte[fragments.Count + fragments.Sum(p => p.Length)];
             int i = 0;
             foreach (var fragment in fragments)
             {
                 foreach (var nucleotide in fragment)
-                {
+                    tmp[i++] = (byte)nucleotide;
+                tmp[i++] = (byte)Nucleotide.End;
+            }
+            tmp[i - 1]++;
+            var sfx = new SuffixArray(tmp);
+            return new TextComparer(tmp, sfx);
+        }
+
+        public static SuffixArray BuildMany(ICollection<Nucleotide[]> fragments)
+        {
+            var tmp = new byte[fragments.Count + fragments.Sum(p => p.Length)];
+            int i = 0;
+            foreach (var fragment in fragments)
+            {
+                foreach (var nucleotide in fragment)
                     tmp[i++] = (byte) nucleotide;
-                }
                 tmp[i++] = (byte)Nucleotide.End;
             }
             tmp[i - 1]++;
@@ -26,7 +39,7 @@ namespace MotifSeeker.Sfx
             return sfx;
         }
 
-        public SuffixArray BuildOne(Nucleotide[] fragments)
+        public static SuffixArray BuildOne(Nucleotide[] fragments)
         {
             var tmp = new byte[fragments.Length + 1];
             for (int i = 0; i < fragments.Length; i++)

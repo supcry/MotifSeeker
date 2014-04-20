@@ -9,6 +9,10 @@ using MotifSeeker.Data.Dna;
 
 namespace MotifSeeker.Data.DNaseI
 {
+    /// <summary>
+    /// Класс работы с экспериментальными данными (NarrowPeak).
+    /// Объединяет результаты классификации пиков по разным клеткам.
+    /// </summary>
 	public static class NarrowPeaksMerger
 	{
 		public static IEnumerable<MergedNarrowPeak> GetMergedNarrowPeaks(ChromosomeEnum? onlyChr, int maxCellsCount)
@@ -102,6 +106,9 @@ namespace MotifSeeker.Data.DNaseI
 		}
 	}
 
+    /// <summary>
+    /// Регион ДНК с агрегированной информацией о 
+    /// </summary>
 	public class MergedNarrowPeak
 	{
 		/// <summary>
@@ -176,6 +183,8 @@ namespace MotifSeeker.Data.DNaseI
 			                    IEnumerable<float> v1, IEnumerable<float> v2,
 			                    int minStart, int maxStart, int minEnd, int maxEnd)
 		{
+            Debug.Assert(start >= 0);
+            Debug.Assert(end > 0);
 			Chr = chr;
 			StartPos = start;
 			EndPos = end;
@@ -190,8 +199,8 @@ namespace MotifSeeker.Data.DNaseI
 		public static MergedNarrowPeak Merge(MergedNarrowPeak a, MergedNarrowPeak b)
 		{
 			Debug.Assert(a.Chr == b.Chr);
-			var start = (int) Math.Round((a.StartPos*a.Count + b.StartPos*b.Count)/(double) (a.Count + b.Count));
-			var end = (int) Math.Round((a.EndPos*a.Count + b.EndPos*b.Count)/(double) (a.Count + b.Count));
+            var start = (int)Math.Round((a.StartPos * (long)a.Count + b.StartPos * (long)b.Count) / (double)(a.Count + b.Count));
+            var end = (int)Math.Round((a.EndPos * (long)a.Count + b.EndPos * (long)b.Count) / (double)(a.Count + b.Count));
 			var minStart = Math.Min(a.StartPosMin, b.StartPosMin);
 			var maxStart = Math.Max(a.StartPosMax, b.StartPosMax);
 			var minEnd = Math.Min(a.EndPosMin, b.EndPosMin);

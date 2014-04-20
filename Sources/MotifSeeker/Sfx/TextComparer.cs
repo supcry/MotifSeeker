@@ -4,26 +4,18 @@ namespace MotifSeeker.Sfx
 {
     public interface ITextComparer
     {
-        SuffixSubstr[] GetAllCites(byte[] hashes);
+        SuffixSubstr[] GetAllCites(byte[] hashes, int minSubstrLength = -1);
     }
 
     public abstract class TextComparerBase
     {
-
-        protected readonly int _minSubstrLength;
         protected readonly byte[] _docHashes;
 
         protected Pointer _pointer;
         protected SuffixArray _suffixArray;
 
         protected TextComparerBase(byte[] docHashes)
-            : this(2, docHashes)
         {
-        }
-
-        protected TextComparerBase(int minSubstrLength, byte[] docHashes)
-        {
-            _minSubstrLength = minSubstrLength;
             _docHashes = docHashes;
         }
     }
@@ -37,8 +29,7 @@ namespace MotifSeeker.Sfx
         {
         }
 
-        public TextComparer(byte[] docHashes, int minSubstrLength, SuffixArray suffixArray = null)
-            : base(minSubstrLength, docHashes)
+        public TextComparer(byte[] docHashes, int minSubstrLength, SuffixArray suffixArray = null) : base(docHashes)
         {
             //            _depths = new int[docHashes.Length];
             //            _srcIds = new int[docHashes.Length];
@@ -48,11 +39,13 @@ namespace MotifSeeker.Sfx
             DocHashesLength = _docHashes.Length;
         }
 
-        public SuffixSubstr[] GetAllCites(byte[] hashes)
+        public SuffixSubstr[] GetAllCites(byte[] hashes, int minSubstrLength = -1)
         {
+            if (minSubstrLength == -1)
+                minSubstrLength = hashes.Length;
             hashes[hashes.Length - 1] = byte.MaxValue - 1; // todo перенести в textInfo)
-            List<SubPointer> list = FindSubStringsByCheckDoc(hashes);
-            var result = FindAllSubStrs(list);
+            List<SubPointer> list = FindSubStringsByCheckDoc(hashes, minSubstrLength);
+            var result = FindAllSubStrs(list, minSubstrLength);
 
             result.Sort(new SuffixSubstrComparеrByChkIdx());
             return result.ToArray();
@@ -62,7 +55,7 @@ namespace MotifSeeker.Sfx
         /// <summary>
         /// С использованием суффиксных ссылок и безопасного нахождения подстрок в проверяемом документе.
         /// </summary>
-        private List<SubPointer> FindSubStringsByCheckDoc(byte[] hashes)
+        private List<SubPointer> FindSubStringsByCheckDoc(byte[] hashes, int minSubstrLength)
         {
             var list = new List<SubPointer>();
             var docLength = DocHashesLength - 1;
@@ -77,7 +70,7 @@ namespace MotifSeeker.Sfx
                     right++;
 
 
-                if (right - left >= _minSubstrLength)
+                if (right - left >= minSubstrLength)
                     list.Add(new SubPointer(_pointer, left, right - left));
 
                 sa.UseSuffixLink(_pointer);
@@ -153,7 +146,7 @@ namespace MotifSeeker.Sfx
         //            return res;
         //        }
 
-        private List<SuffixSubstr> FindAllSubStrs(List<SubPointer> pointers)
+        private List<SuffixSubstr> FindAllSubStrs(List<SubPointer> pointers, int minSubstrLength)
         {
             var list = new List<SuffixSubstr>();
 
@@ -161,9 +154,9 @@ namespace MotifSeeker.Sfx
             {
                 list.Add(_suffixArray.CreateSuffix(p));
 
-                _suffixArray.AddSuffixesRightToLeft(p, _minSubstrLength, list);
+                _suffixArray.AddSuffixesRightToLeft(p, minSubstrLength, list);
 
-                _suffixArray.AddSuffixesLeftToRight(p, _minSubstrLength, list);
+                _suffixArray.AddSuffixesLeftToRight(p, minSubstrLength, list);
             }
 
             return list;

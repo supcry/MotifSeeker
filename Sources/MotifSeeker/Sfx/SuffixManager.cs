@@ -23,8 +23,7 @@ namespace MotifSeeker.Sfx
             var present =
                 regions[ClassifiedRegion.MotifContainsStatus.Present].Select(
                     p => chr.GetPack(p.StartPos, p.EndPos - p.StartPos)).ToArray();
-            var builder = new SuffixBuilder();
-            return builder.BuildMany(present);
+            return SuffixBuilder.BuildMany(present);
         }
 
         /// <summary>
@@ -33,8 +32,7 @@ namespace MotifSeeker.Sfx
         public static SuffixArray GetSfxArray(ChromosomeEnum chrId)
         {
             var chr = ChrManager.GetChromosome(chrId);
-            var builder = new SuffixBuilder();
-            return builder.BuildOne(chr.GetPack(0, chr.Count));
+            return SuffixBuilder.BuildOne(chr.GetPack(0, chr.Count));
         }
     }
 }

@@ -15,19 +15,101 @@ namespace Sandbox
 	{
 		static void Main(string[] args)
 		{
-			var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10);
-			var items = flow.ToArray();
-			var totalCount = items.Sum(p => p.Count);
-			//var a = items[334];
-			//var b = items[335];
-			//var s = MergedNarrowPeak.GetMergeStatus(a, b);
+            // План:
+            //  1. получить последовательности участков с пиками и без пиков
+            //  2. построить суффиксы по участкам с пиками и без пиков
+            //  3. удостовериться, что участки в обоих суф.структурах находятся.
 
-			var byAvg = items.OrderByDescending(p => p.AvgValue1).Where(p => !p.StrictMerge).ToArray();
-			var byCnt = items.OrderByDescending(p => p.Count).Where(p => !p.StrictMerge).ToArray();
+            //  1. получить последовательности участков с пиками и без пиков
+		    var t = DateTime.Now;
+            var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10);
+		    var peakRegions = new List<MergedNarrowPeak>();
+		    var nonRegions = new List<KeyValuePair<int, int>>();
+
+		    const int minCellsPerRegion = 2;
+		    const int minAverageValue1 = 200;
+		    const int minSizeOfRegion = 100;
+		    int lastPos = 0;
+
+		    int totalPeaksLen = 0;
+            int totalPeaksLenAvg = 0;
+		    int totalNonpeaksLen = 0;
+
+		    foreach (var peak in flow)
+		    {
+                // добавим регион без пиков, если он есть
+                if (peak.StartPosMin - lastPos >= minSizeOfRegion)
+		        {
+                    if(totalNonpeaksLen < 300000)
+    		            nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
+                    totalNonpeaksLen += peak.StartPosMin - lastPos;
+		        }
+                Debug.Assert(lastPos <= peak.EndPosMax + minSizeOfRegion);
+		        lastPos = peak.EndPosMax;
+                // определим качество региона
+                if (peak.Count < minCellsPerRegion || peak.AvgValue1 < minAverageValue1)
+                    continue;
+		        if (peak.Size < minSizeOfRegion)
+		            continue;
+                Debug.Assert(peak.StartPos >= 0);
+                Debug.Assert(peak.EndPos >= 0);
+                peakRegions.Add(peak);
+		        totalPeaksLen += peak.EndPosMax - peak.StartPosMin;
+		        totalPeaksLenAvg += peak.EndPos - peak.StartPos;
+		    }
+            peakRegions.TrimExcess();
+            nonRegions.TrimExcess();
+            Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
+            Console.WriteLine("PeaksTotalLen=" + totalPeaksLen + ", EmptyTotalLen=" + totalNonpeaksLen);
+            //  2. построить суффиксы по участкам с пиками и без пиков
+		    t = DateTime.Now;
+            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
+            Console.WriteLine("Chromosome converted, dt=" + (DateTime.Now - t));
+            t = DateTime.Now;
+		    var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray());
+            Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t));
+            t = DateTime.Now;
+            var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray());
+            Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t));
+            
+            //  3. удостовериться, что участки в обоих суф.структурах находятся.
+
+            // подготовим тестовые образцы
+		    var testPeakPos = peakRegions[peakRegions.Count/2];
+		    var testEmptyPos = nonRegions[nonRegions.Count/2];
+		    var testPeakData = chr.GetPack(testPeakPos.StartPos, testPeakPos.Size);
+            var testEmptyData = chr.GetPack(testEmptyPos.Key, Math.Min(testEmptyPos.Value - testEmptyPos.Key, testPeakPos.Size));
+		    for (int i = 0; i < 2; i++)
+		    {
+		        t = DateTime.Now;
+		        var cites1 = sfxPeaks.GetAllCites(testPeakData.Select(p => (byte) p).ToArray(), testPeakData.Length - 1);
+		        Console.WriteLine("Search peak in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites1.Length);
+		        Debug.Assert(cites1.Length == 1);
+		        t = DateTime.Now;
+		        var cites2 = sfxPeaks.GetAllCites(testEmptyData.Select(p => (byte) p).ToArray(), testEmptyData.Length - 1);
+		        Console.WriteLine("Search empty in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites2.Length);
+		        Debug.Assert(cites2.Length == 0);
+		        t = DateTime.Now;
+		        var cites3 = sfxEmpty.GetAllCites(testPeakData.Select(p => (byte) p).ToArray(), testPeakData.Length - 1);
+		        Console.WriteLine("Search peak in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites3.Length);
+		        Debug.Assert(cites3.Length == 0);
+		        t = DateTime.Now;
+		        var cites4 = sfxEmpty.GetAllCites(testEmptyData.Select(p => (byte) p).ToArray(), testEmptyData.Length - 1);
+		        Console.WriteLine("Search empty in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites4.Length);
+		        Debug.Assert(cites4.Length == 1);
+		    }
+		    //var items = flow.ToArray();
+            //var totalCount = items.Sum(p => p.Count);
+            ////var a = items[334];
+            ////var b = items[335];
+            ////var s = MergedNarrowPeak.GetMergeStatus(a, b);
+
+            //var byAvg = items.OrderByDescending(p => p.AvgValue1).Where(p => !p.StrictMerge).ToArray();
+            //var byCnt = items.OrderByDescending(p => p.Count).Where(p => !p.StrictMerge).ToArray();
             //CheckSfxArrayBuilder();
 		    //CheckSfxArrayBuilderForClass1();
-			 Console.WriteLine("Ok\nPress any key to exit");
-			//Console.ReadKey();
+			Console.WriteLine("Ok\nPress any key to exit");
+			Console.ReadKey();
 
 		}
 
@@ -36,13 +118,12 @@ namespace Sandbox
 	        try
 	        {
 	            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
-	            var builder = new SuffixBuilder();
 	            for (int i = 2; i < chr.Count; i *= 2)
 	            {
 	                var sw = new Stopwatch();
 	                var pack = chr.GetPack(0, i);
 	                sw.Start();
-	                var tmp = builder.BuildOne(pack);
+                    var tmp = SuffixBuilder.BuildOne(pack);
 	                sw.Stop();
 	                Console.WriteLine("count=" + i + ", time=" + sw.Elapsed);
 
@@ -66,7 +147,6 @@ namespace Sandbox
                 var parts = new List<Nucleotide[]>();
                 int len = 0;
                 int partId = 0;
-                var builder = new SuffixBuilder();
                 SuffixArray sfx;
                 for (int i = 2; i < chr.Count && partId < exp.Count; i *= 2)
                 {
@@ -78,7 +158,7 @@ namespace Sandbox
                     }
                     var sw = new Stopwatch();
                     sw.Start();
-                    sfx = builder.BuildMany(parts);
+                    sfx = SuffixBuilder.BuildMany(parts);
                     sw.Stop();
                     Console.WriteLine("len=" + i + ",\tparts=" + partId + ",\ttime=" + sw.Elapsed);
                 }
