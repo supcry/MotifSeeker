@@ -38,12 +38,17 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="ZedGraph">
+      <HintPath>..\Libs\ZedGraph.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data\DNaseI\DNaseIManager.cs" />
@@ -54,6 +59,7 @@
     <Compile Include="Data\DNaseI\SensitivityResults.cs" />
     <Compile Include="Data\Dna\ChrManager.cs" />
     <Compile Include="Data\Dna\Nucleotide.cs" />
+    <Compile Include="Graph\MergedBarGraph.cs" />
     <Compile Include="Helpers\StaticDictionary.cs" />
     <Compile Include="LinqExt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

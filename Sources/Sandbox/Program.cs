@@ -1,114 +1,182 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Windows.Forms;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
+using MotifSeeker.Graph;
 using MotifSeeker.Helpers;
 using MotifSeeker.Sfx;
+using ZedGraph;
 
 namespace Sandbox
 {
 	class Program
 	{
-		static void Main(string[] args)
-		{
+	    static void MainPlan()
+	    {
             // План:
             //  1. получить последовательности участков с пиками и без пиков
             //  2. построить суффиксы по участкам с пиками и без пиков
             //  3. удостовериться, что участки в обоих суф.структурах находятся.
 
             //  1. получить последовательности участков с пиками и без пиков
-		    var t = DateTime.Now;
+            var t = DateTime.Now;
             var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10).ToArray();
-		    var peakRegions = new List<MergedNarrowPeak>();
-		    var nonRegions = new List<KeyValuePair<int, int>>();
 
-		    const int minCellsPerRegion = 2;
-		    const int minAverageValue1 = 200;
-		    const int minSizeOfRegion = 100;
-		    int lastPos = 0;
+            
+            MergedBarGraph.DrawPeaks(flow, 5, 0, 2000000);
 
-		    int totalPeaksLen = 0;
+            var peakRegions = new List<MergedNarrowPeak>();
+            var noiseRegions = new List<MergedNarrowPeak>();
+            var nonRegions = new List<KeyValuePair<int, int>>();
+
+            const int minCellsPerRegion = 2;
+            const int minAverageValue1 = 200;
+            const int minSizeOfRegion = 100;
+            int lastPos = 0;
+
+            int totalPeaksLen = 0;
             int totalPeaksLenAvg = 0;
-		    int totalNonpeaksLen = 0;
+            int totalNonpeaksLen = 0;
 
-		    foreach (var peak in flow)
-		    {
+            foreach (var peak in flow)
+            {
                 // добавим регион без пиков, если он есть
                 if (peak.StartPosMin - lastPos >= minSizeOfRegion)
-		        {
-                    if(totalNonpeaksLen < 300000)
-    		            nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
+                {
+                    if (totalNonpeaksLen < 300000)
+                        nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
                     totalNonpeaksLen += peak.StartPosMin - lastPos;
-		        }
+                }
                 Debug.Assert(lastPos <= peak.EndPosMax + minSizeOfRegion);
-		        lastPos = peak.EndPosMax;
+                lastPos = peak.EndPosMax;
                 // определим качество региона
-                if (peak.Count < minCellsPerRegion || peak.AvgValue1 < minAverageValue1)
+                if (peak.Count < minCellsPerRegion || peak.AvgValue1 < minAverageValue1 || peak.Size < minSizeOfRegion)
+                {
+                    noiseRegions.Add(peak);
                     continue;
-		        if (peak.Size < minSizeOfRegion)
-		            continue;
+                }
                 Debug.Assert(peak.StartPos >= 0);
                 Debug.Assert(peak.EndPos >= 0);
                 peakRegions.Add(peak);
-		        totalPeaksLen += peak.EndPosMax - peak.StartPosMin;
-		        totalPeaksLenAvg += peak.EndPos - peak.StartPos;
-		    }
+                totalPeaksLen += peak.EndPosMax - peak.StartPosMin;
+                totalPeaksLenAvg += peak.EndPos - peak.StartPos;
+            }
             peakRegions.TrimExcess();
             nonRegions.TrimExcess();
             Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
             Console.WriteLine("PeaksTotalLen=" + totalPeaksLen + ", EmptyTotalLen=" + totalNonpeaksLen);
+
+            MergedBarGraph.DrawPeaks(peakRegions, 5, 0, 20000000);
             //  2. построить суффиксы по участкам с пиками и без пиков
-		    t = DateTime.Now;
+            t = DateTime.Now;
             var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
             Console.WriteLine("Chromosome converted, dt=" + (DateTime.Now - t));
             t = DateTime.Now;
-		    var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray());
+            var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray());
             Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t));
             t = DateTime.Now;
             var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray());
             Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t));
-            
+
             //  3. удостовериться, что участки в обоих суф.структурах находятся.
 
             // подготовим тестовые образцы
-		    var testPeakPos = peakRegions[peakRegions.Count/2];
-		    var testEmptyPos = nonRegions[nonRegions.Count/2];
-		    var testPeakData = chr.GetPack(testPeakPos.StartPos, testPeakPos.Size);
+            var testPeakPos = peakRegions[peakRegions.Count / 2];
+            var testEmptyPos = nonRegions[nonRegions.Count / 2];
+            var testPeakData = chr.GetPack(testPeakPos.StartPos, testPeakPos.Size);
             var testEmptyData = chr.GetPack(testEmptyPos.Key, Math.Min(testEmptyPos.Value - testEmptyPos.Key, testPeakPos.Size));
-		    for (int i = 0; i < 2; i++)
-		    {
-		        t = DateTime.Now;
-		        var cites1 = sfxPeaks.GetAllCites(testPeakData.Select(p => (byte) p).ToArray(), testPeakData.Length - 1);
-		        Console.WriteLine("Search peak in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites1.Length);
-		        Debug.Assert(cites1.Length == 1);
-		        t = DateTime.Now;
-		        var cites2 = sfxPeaks.GetAllCites(testEmptyData.Select(p => (byte) p).ToArray(), testEmptyData.Length - 1);
-		        Console.WriteLine("Search empty in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites2.Length);
-		        Debug.Assert(cites2.Length == 0);
-		        t = DateTime.Now;
-		        var cites3 = sfxEmpty.GetAllCites(testPeakData.Select(p => (byte) p).ToArray(), testPeakData.Length - 1);
-		        Console.WriteLine("Search peak in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites3.Length);
-		        Debug.Assert(cites3.Length == 0);
-		        t = DateTime.Now;
-		        var cites4 = sfxEmpty.GetAllCites(testEmptyData.Select(p => (byte) p).ToArray(), testEmptyData.Length - 1);
-		        Console.WriteLine("Search empty in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites4.Length);
-		        Debug.Assert(cites4.Length == 1);
-		    }
-		    //var items = flow.ToArray();
-            //var totalCount = items.Sum(p => p.Count);
-            ////var a = items[334];
-            ////var b = items[335];
-            ////var s = MergedNarrowPeak.GetMergeStatus(a, b);
+            for (int i = 0; i < 2; i++)
+            {
+                t = DateTime.Now;
+                var cites1 = sfxPeaks.GetAllCites(testPeakData.Select(p => (byte)p).ToArray(), testPeakData.Length - 1);
+                Console.WriteLine("Search peak in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites1.Length);
+                Debug.Assert(cites1.Length == 1);
+                t = DateTime.Now;
+                var cites2 = sfxPeaks.GetAllCites(testEmptyData.Select(p => (byte)p).ToArray(), testEmptyData.Length - 1);
+                Console.WriteLine("Search empty in peaks, dt=" + (DateTime.Now - t) + ", cnt=" + cites2.Length);
+                Debug.Assert(cites2.Length == 0);
+                t = DateTime.Now;
+                var cites3 = sfxEmpty.GetAllCites(testPeakData.Select(p => (byte)p).ToArray(), testPeakData.Length - 1);
+                Console.WriteLine("Search peak in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites3.Length);
+                Debug.Assert(cites3.Length == 0);
+                t = DateTime.Now;
+                var cites4 = sfxEmpty.GetAllCites(testEmptyData.Select(p => (byte)p).ToArray(), testEmptyData.Length - 1);
+                Console.WriteLine("Search empty in empties, dt=" + (DateTime.Now - t) + ", cnt=" + cites4.Length);
+                Debug.Assert(cites4.Length == 1);
+            }
+	    }
 
-            //var byAvg = items.OrderByDescending(p => p.AvgValue1).Where(p => !p.StrictMerge).ToArray();
-            //var byCnt = items.OrderByDescending(p => p.Count).Where(p => !p.StrictMerge).ToArray();
-            //CheckSfxArrayBuilder();
-		    //CheckSfxArrayBuilderForClass1();
-			Console.WriteLine("Ok\nPress any key to exit");
+	    static void DrawForm()
+	    {
+
+	        // * Вывести на экран простенькую форму с графиком
+            // * Научиться выводить график нужного вида + научиться экспортировать в eps.
+            // * Автоматизировать процесс, вывести вывод графиков в отдельную библиотеку
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            var form = new Form {Width = 800, Height = 600};
+
+	        var f = new ZedGraphControl
+	        {
+	            Anchor = AnchorStyles.Top,
+	            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+	            Dock = DockStyle.Fill
+	        };
+
+	        var yaxis = f.GraphPane.YAxis;
+            yaxis.Type = AxisType.Log;
+	        yaxis.Scale.MaxAuto = false;
+            yaxis.Scale.MinAuto = false;
+            yaxis.Scale.Max = 1e+3;
+            yaxis.Scale.Min = 1e-1;
+
+            var xaxis = f.GraphPane.XAxis;
+            xaxis.Scale.MaxAuto = false;
+            xaxis.Scale.MinAuto = false;
+	        xaxis.Scale.Max = 110;
+            xaxis.Scale.Min = -10;
+            xaxis.Type = AxisType.LinearAsOrdinal;
+
+	        var grow = Enumerable.Range(1, 10).Select(p => (double) p*p).ToArray();
+            var grow2 = Enumerable.Range(1, 10).Select(p => (double)p * p / 2.0).ToArray();
+            var grow3 = Enumerable.Range(1, 10).Select(p => (double)p * p / 4.0).ToArray();
+
+            var growx = Enumerable.Range(1, 10).Select(p => (double)p * p + 0.5).ToArray();
+
+            f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
+	        f.GraphPane.BarSettings.MinBarGap = 1000;
+
+	        var bar1 = f.GraphPane.AddBar("bar", grow, grow, Color.Blue);
+            var bar2 = f.GraphPane.AddBar("bar2", grow, grow2, Color.Red);
+            var bar3 = f.GraphPane.AddBar("bar3", growx, grow3, Color.Green);
+
+            bar1.Bar.Fill.Type = FillType.Brush;
+	        bar1.Bar.Border.IsVisible = false;
+            bar2.Bar.Fill.Type = FillType.Solid;
+            bar2.Bar.Border.IsVisible = false;
+            bar3.Bar.Fill.Type = FillType.GradientByY;
+            bar3.Bar.Border.IsVisible = false;
+
+            form.Controls.Add(f);
+
+            f.AxisChange();
+            f.Invalidate();
+            
+            Application.Run(form);
+	    }
+
+
+		static void Main(string[] args)
+		{
+		    MainPlan();
+		    //DrawForm();
+			//Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 
 		}
