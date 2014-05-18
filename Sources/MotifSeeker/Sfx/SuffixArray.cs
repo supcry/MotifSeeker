@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MotifSeeker.Sfx
@@ -14,6 +15,16 @@ namespace MotifSeeker.Sfx
 		private readonly int[] _lcptab;
 		private readonly Dictionary<HashKey, LcpValue> _cldtab;
 		private readonly Dictionary<Interval, LcpInterval> _linktab;
+
+		private readonly List<ElementGroup> _elementGroups;
+		private readonly int _minGroupSize;
+
+		public List<ElementGroup> GetElementGroups()
+		{
+			return _elementGroups;
+		}
+
+		public int StrokeSize { get { return _hashesLength; } }
 
 		public int HashesLength
 		{
@@ -30,8 +41,11 @@ namespace MotifSeeker.Sfx
 			get { return _lcptab; }
 		}
 
-		public SuffixArray(byte[] hashes)
+		public SuffixArray(byte[] hashes, int minGroupSize = 0)
 		{
+			_minGroupSize = minGroupSize;
+			if(minGroupSize > 0)
+				_elementGroups = new List<ElementGroup>();
 			_hashes = hashes;
 			_hashesLength = hashes.Length;
 
@@ -98,6 +112,46 @@ namespace MotifSeeker.Sfx
 
 		/// <summary>
 		/// Дерево на основе lcp интервалов.
+		/// 
+		/// Михаил Корольков: 
+		/// Смотри
+		/// lcptab - это просто некоторая функция, заданная в целых точках какого-то отрезка
+		/// мы можем "сечь" эту функцию горизонтальными прямыми
+		/// и нас интересуют непрерывные интервалы, получающиеся при таких рассечениях
+		/// потому что такие интервалы характеризуют довольно "глубокие" вершины  в суф. дереве
+		/// вот предположим мы с какого-то момента читаем lcp-массив.
+		/// Читаем следующие числа:    0 2  10 11 146 3 1
+		/// Фактически, вот этот участок будет результатом ккого-то сечения функции горизонтальной прямой:
+		/// 2  10 11 146 3
+		/// потому что внутри него все значения большие, а по краям меньше
+		/// Павел: 10 11 146 тоже
+		/// Павел:  11 146
+		/// Да.
+		/// и это тоже
+		/// но явным образом сечь функцию всеми горизонтальными прямыми тупо и долго
+		/// и здесь моделируется хитрая штука на стеке
+		/// ведь на самом деле довольно понятно вот чо
+		/// пусть мы все прочитанные числа закидываем в стек
+		/// ПОКА эти данные монотонно не убывают
+		/// то есть вот на этом участке
+		///   0 2  10 11 146
+		/// мы только заполняли стек, ничего оттуда не вытаскивали
+		/// и внезапно приходит число, которое меньше последнего прочитанного
+		/// а именно, 3, в моем примере
+		/// что это означает? Это значит, что у функции сначала был рост монотонный, а потом внезапно пошел спад. ЭТо значит, что где-то между началом этого "роста", и точкой, в которой пошел спад, есть локальный максимум
+		/// в совокупности с теоремкой, что лсп интервалы бывают либо вложенными, либо не пересекающимися, это дает следующий факт
+		/// вот нам пришло число 3
+		/// и мы начинаем с вершины стека выталкивать все элементы, большие трех
+		/// потому что они гарантированно будут принадлежать некоторому лсп-интервалу, который в тройке заканчивается
+		/// но мы не знаем, где он начинается. И вот мы выталкиваем со стека все элементы, пока не обнаружим левую границу интервала, правая граница которого (тройка) нам уже известна
+		/// бинго! у нас есть лсп интервал
+		/// 
+		/// но, как я уже сказал, есть проблемка
+		/// там более сложная версия используется
+		/// которая "алгоритм 4.4"
+		/// надо из него лишнее повырезать
+		/// в частности, "дочерние" отношения нас совсем не интересуют сейчас
+		/// а там каждый элемент стека хранит еще лист его "потомков"
 		/// </summary>
 		/// <returns></returns>
 		private LcpTree BuildLcpTree()
@@ -118,6 +172,8 @@ namespace MotifSeeker.Sfx
 				{
                     peek.RightBound = i - 1;
 					lastInterval = stack.Pop();
+					if (_minGroupSize > 0)
+						ProcessGroup(lastInterval);// анализ интервала на наличие нужной группы
 				    peek = stack.Peek();
 					leftBound = lastInterval.LeftBound;
                     if (_lcptab[i] <= peek.Lcp)
@@ -146,6 +202,66 @@ namespace MotifSeeker.Sfx
 			return root;
 		}
 
+		private byte[] CutAndCheck(uint startPos, int cnt)
+		{
+			var ret = new byte[cnt];
+			var endPos = startPos + cnt;
+			var tmp = new int[4];
+			for (uint i = startPos; i < endPos; i++)
+			{
+				var id = ret[i - startPos] = _hashes[i];
+				if (id > 3)
+					return null; // совпадение содержит границу отрезков
+				tmp[id]++;
+			}
+			var thr = cnt/2;
+			return tmp.Any(p => p >= thr) ? null : ret;
+		}
+
+		private void ProcessGroup(LcpTree interval)
+		{
+			var size = interval.Lcp; // размер совпадения
+			var cnt = interval.RightBound - interval.LeftBound + 1; // число совпавших
+			if (size < _minGroupSize || size > 100)
+				return;
+			Debug.Assert(cnt > 1);
+			// определим позиции совпавших кусков ДНК
+			var pos = new uint[cnt];
+			Array.Copy(_suftab, interval.LeftBound, pos, 0, cnt);
+			// определим сам совпавший кусок
+			var str = CutAndCheck(pos[0], size);
+			if (str == null)
+				return;
+			if (_elementGroups.Count > 0)
+			{
+				// проверим, не стоит ли слить с предыдущей группой
+				var last = _elementGroups.Last();
+				if (last.Count < cnt && str.Length < last.Chain.Length && str.SequenceEqual(last.Chain.Take(str.Length)))
+				{
+					_elementGroups[_elementGroups.Count-1] =new ElementGroup(str, pos);
+					return;
+				}
+			}
+			//var str = new byte[size];
+			//Array.Copy(_hashes, pos[0], str, 0, size);
+			//if (str.Count(p => p == 3) >= str.Length/2) // отбросим все совпадения, где заведомо много N
+			//	return;
+			//if (str.Count(p => p == 0) >= str.Length/2) // отбросим все совпадения, где заведомо много N
+			//	return;
+//#if DEBUG
+//			for (int i = 1; i < pos.Length; i++)
+//			{
+//				var str2 = new byte[size];
+//				Array.Copy(_hashes, pos[i], str2, 0, size);
+//				for(var k=0;k<size;k++)
+//					Debug.Assert(str[k] == str2[k]);
+//			}
+//#endif
+			// сформируем группу и сохраним её
+			var group = new ElementGroup(str, pos);
+			_elementGroups.Add(group);
+		}
+
 		private void BuildHashTables(out Dictionary<HashKey, LcpValue> cldtab,
 			out Dictionary<Interval, LcpInterval> linkstab)
 		{
@@ -165,7 +281,12 @@ namespace MotifSeeker.Sfx
 			linkstab = BuildSuffixLinks(lcpIntervals);
 		}
 
-
+		/// <summary>
+		/// Миша: уже заполнение хеш-таблицы childtab
+		/// </summary>
+		/// <param name="root"></param>
+		/// <param name="lcpIntervals"></param>
+		/// <param name="dictionary"></param>
 		private void BuildHashTableCustomStack(LcpTree root, List<Interval>[] lcpIntervals,
 			                                   Dictionary<HashKey, LcpValue> dictionary)
 		{

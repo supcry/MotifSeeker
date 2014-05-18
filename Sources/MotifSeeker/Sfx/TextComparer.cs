@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MotifSeeker.Sfx
 {
@@ -41,8 +42,10 @@ namespace MotifSeeker.Sfx
 
         public SuffixSubstr[] GetAllCites(byte[] hashes, int minSubstrLength = -1)
         {
-            if (minSubstrLength == -1)
-                minSubstrLength = hashes.Length;
+			if (minSubstrLength == -1)
+				minSubstrLength = hashes.Length;
+			Array.Resize(ref hashes, hashes.Length + 1);
+            
             hashes[hashes.Length - 1] = byte.MaxValue - 1; // todo перенести в textInfo)
             List<SubPointer> list = FindSubStringsByCheckDoc(hashes, minSubstrLength);
             var result = FindAllSubStrs(list, minSubstrLength);
@@ -50,6 +53,13 @@ namespace MotifSeeker.Sfx
             result.Sort(new SuffixSubstrComparеrByChkIdx());
             return result.ToArray();
         }
+
+		public List<ElementGroup> GetElementGroups()
+	    {
+		    return _suffixArray.GetElementGroups();
+	    }
+
+		public int StrokeSize { get { return _suffixArray.StrokeSize;  } }
 
 
         /// <summary>

@@ -9,7 +9,7 @@ namespace MotifSeeker.Sfx
     /// </summary>
     public static class SuffixBuilder
     {
-        public static TextComparer BuildMany2(ICollection<Nucleotide[]> fragments)
+        public static TextComparer BuildMany2(ICollection<Nucleotide[]> fragments, int minGroupSize = 0)
         {
             var tmp = new byte[fragments.Count + fragments.Sum(p => p.Length)];
             int i = 0;
@@ -20,7 +20,7 @@ namespace MotifSeeker.Sfx
                 tmp[i++] = (byte)Nucleotide.End;
             }
             tmp[i - 1]++;
-            var sfx = new SuffixArray(tmp);
+			var sfx = new SuffixArray(tmp, minGroupSize);
             return new TextComparer(tmp, sfx);
         }
 

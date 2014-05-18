@@ -37,7 +37,7 @@ namespace MotifSeeker.Graph
 	        yaxis.Scale.MaxAuto = false;
             yaxis.Scale.MinAuto = false;
             yaxis.Scale.Max = maxValue;
-            yaxis.Scale.Min = 0;
+            yaxis.Scale.Min = 1;
             yaxis.Title = new AxisLabel("peakValue", null, 16, Color.Black, false, false, false);
             // X
             var xaxis = f.GraphPane.XAxis;

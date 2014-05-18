@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
@@ -29,7 +30,7 @@ namespace Sandbox
             var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10).ToArray();
 
             
-            MergedBarGraph.DrawPeaks(flow, 5, 0, 2000000);
+            //MergedBarGraph.DrawPeaks(flow, 5, 0, 2000000);
 
             var peakRegions = new List<MergedNarrowPeak>();
             var noiseRegions = new List<MergedNarrowPeak>();
@@ -38,6 +39,7 @@ namespace Sandbox
             const int minCellsPerRegion = 2;
             const int minAverageValue1 = 200;
             const int minSizeOfRegion = 100;
+			const int maxSizeOfRegion = 10000;
             int lastPos = 0;
 
             int totalPeaksLen = 0;
@@ -47,9 +49,9 @@ namespace Sandbox
             foreach (var peak in flow)
             {
                 // добавим регион без пиков, если он есть
-                if (peak.StartPosMin - lastPos >= minSizeOfRegion)
+				if (peak.StartPosMin - lastPos >= minSizeOfRegion && peak.StartPosMin - lastPos <= maxSizeOfRegion)
                 {
-                    if (totalNonpeaksLen < 300000)
+                    if (totalNonpeaksLen < 150000)
                         nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
                     totalNonpeaksLen += peak.StartPosMin - lastPos;
                 }
@@ -72,17 +74,33 @@ namespace Sandbox
             Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
             Console.WriteLine("PeaksTotalLen=" + totalPeaksLen + ", EmptyTotalLen=" + totalNonpeaksLen);
 
-            MergedBarGraph.DrawPeaks(peakRegions, 5, 0, 20000000);
+            //MergedBarGraph.DrawPeaks(peakRegions, 5, 0, 20000000);
             //  2. построить суффиксы по участкам с пиками и без пиков
             t = DateTime.Now;
             var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
             Console.WriteLine("Chromosome converted, dt=" + (DateTime.Now - t));
             t = DateTime.Now;
-            var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray());
-            Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t));
+            var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray(), 10);
+            Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxPeaks.StrokeSize + ", elementGroups=" + sfxPeaks.GetElementGroups().Count);
             t = DateTime.Now;
-            var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray());
-            Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t));
+            var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray(), 10);
+			Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxEmpty.StrokeSize + ", elementGroups=" + sfxEmpty.GetElementGroups().Count);
+
+		    var peaksGroups = sfxPeaks.GetElementGroups();
+			var emptyGroups = sfxEmpty.GetElementGroups();
+
+			var peaksGroups1 = peaksGroups.OrderBy(p => p.Positions[0]).ToArray();
+			var emptyGroups1 = emptyGroups.OrderBy(p => p.Positions[0]).ToArray();
+
+			var peaksGroups2 = peaksGroups.OrderBy(p => -p.Count).ToArray();
+			var emptyGroups2 = emptyGroups.OrderBy(p => -p.Count).ToArray();
+
+			Console.WriteLine("TransTest (peaks on peaks)");
+			TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxPeaks);
+			Console.WriteLine("TransTest (peaks on empty)");
+		    TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxEmpty);
+			Console.WriteLine("TransTest (empty on peaks)");
+			TransTest(sfxEmpty.StrokeSize, emptyGroups2.Take(10), sfxPeaks);
 
             //  3. удостовериться, что участки в обоих суф.структурах находятся.
 
@@ -111,6 +129,20 @@ namespace Sandbox
                 Debug.Assert(cites4.Length == 1);
             }
 	    }
+
+		private static void TransTest(int origLen, IEnumerable<ElementGroup> groups, TextComparer cmp)
+		{
+			var cntOrig = 0;
+			var cntTrans = 0;
+			foreach (var gr in groups)
+			{
+				var cnt = cmp.GetAllCites(gr.Chain, gr.Chain.Length);
+				Console.WriteLine(gr + ", otherCnt=" + cnt.Length);
+				cntOrig += gr.Count;
+				cntTrans += cnt.Length;
+			}
+			Console.WriteLine("origFactor=" + cntOrig + ", transFactor=" + Math.Round((double)origLen * cntTrans / (double)(cmp.StrokeSize), 3));
+		}
 
 	    static void DrawForm()
 	    {
