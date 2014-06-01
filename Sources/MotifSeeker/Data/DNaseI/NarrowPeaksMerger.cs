@@ -164,9 +164,6 @@ namespace MotifSeeker.Data.DNaseI
 			}
 		}
 
-
-
-
 		public override string ToString()
 		{
 			var sb = new StringBuilder();

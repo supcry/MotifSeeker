@@ -214,6 +214,8 @@ namespace MotifSeeker.Sfx
 					return null; // совпадение содержит границу отрезков
 				tmp[id]++;
 			}
+		    if (ret.Take(3).All(p => p == 3))// Отбросим все CCC...
+		        return null;
 			var thr = cnt/2;
 			return tmp.Any(p => p >= thr) ? null : ret;
 		}

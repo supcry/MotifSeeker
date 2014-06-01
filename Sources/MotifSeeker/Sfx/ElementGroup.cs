@@ -1,5 +1,7 @@
 ﻿using System;
+using System.CodeDom;
 using System.Linq;
+using MotifSeeker.Data.Dna;
 
 namespace MotifSeeker.Sfx
 {
@@ -30,5 +32,12 @@ namespace MotifSeeker.Sfx
 		{
 			return "Sz:" + Chain.Length + ",Cnt:" + Positions.Length + ",Pos0:" + Positions[0];
 		}
+
+	    public string ChainAsString()
+	    {
+	        return string.Join("", Chain.Select(p => p.ToNucleotide()));
+	    }
+
+        public Nucleotide[] NucleoChain { get { return Chain.Select(p => p.ToNucleotide()).ToArray(); } }
 	}
 }

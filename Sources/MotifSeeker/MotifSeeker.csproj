@@ -51,6 +51,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Alignment.cs" />
     <Compile Include="Data\DNaseI\DNaseIManager.cs" />
     <Compile Include="Data\DNaseI\ClassifiedRegion.cs" />
     <Compile Include="Data\DNaseI\NarrowPeaksMerger.cs" />
