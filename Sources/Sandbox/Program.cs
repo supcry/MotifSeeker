@@ -100,145 +100,20 @@ namespace Sandbox
 			Console.WriteLine("TransTest (empty on peaks)");
 			TransTest(sfxEmpty.StrokeSize, emptyGroups2.Take(10), sfxPeaks);
 
-            WriteElementsLog(peaksGroups2, "results/peakGroups.log.txt", "Совпавшие группы в интересных регионах");
-            WriteElementsLog(emptyGroups2, "results/emptyGroups.log.txt", "Совпавшие группы в фоновых регионах");
+	        var peakClustering = new Clustering(peaksGroups2);
+            var emptyClustering = new Clustering(emptyGroups2);
 
-	        WriteGephiFiles(peaksGroups2, "results/peakGroupsM3");
-            WriteGephiFiles(emptyGroups2, "results/emptyGroupsM3");
-	    }
+            peakClustering.WriteElementsLog("results/peakGroups.log.txt", "Совпавшие группы в интересных регионах");
+            emptyClustering.WriteElementsLog("results/emptyGroups.log.txt", "Совпавшие группы в фоновых регионах");
 
-	    private static void WriteGephiFiles(ElementGroup[] els, string path)
-	    {
-	        var dir = Path.GetDirectoryName(path);
-	        if (dir != null && !Directory.Exists(dir))
-	            Directory.CreateDirectory(dir);
+            peakClustering.WriteToFileForGephi("results/peakGroupsM3");
+            emptyClustering.WriteToFileForGephi("results/emptyGroupsM3");
 
-	        var pathNodes = path + ".nodes.csv";
-            var pathEdges = path + ".edges.csv";
-            // запишем узлы
-            File.Delete(path);
-	        using (var f = File.CreateText(pathNodes))
-	        {
-                f.WriteLine("id\tlabel\tsize");
-                int id = 1;
-	            foreach (var el in els)
-	                f.WriteLine(id++ + "\t" + el.ChainAsString() + "\t" + el.Count);
-                f.Flush();
-                f.Close();
-	        }
-            // запишем связи
-            File.Delete(path);
-            using (var f = File.CreateText(pathEdges))
-	        {
-                f.WriteLine("source\ttarget\tlabel\tweight\tType\tDirection");
-	            for (int i = 0; i < els.Length; i++)
-	            {
-	                for (int j = 0; j < i; j++)
-	                {
-                        var ares = Alignment.Align(els[i].NucleoChain, els[j].NucleoChain);
-                        if (ares.Weight <= 4)
-	                        continue;
-                        f.WriteLine((i + 1) + "\t" + (j + 1) + "\t" + ares.Mask + "\t" + (ares.Weight-4) + "\tUndirected\t" + ares.Direction);
-	                }
-	            }
-                f.Flush();
-                f.Close();
-	        }
+	        var peakCLusters = peakClustering.Work(5);
+            var emptyCLusters = emptyClustering.Work(5);
 
-	    }
-
-        private static int GetAlignmentAndWeight(Nucleotide[] a, Nucleotide[] b, out string mask, out Direction direction)
-	    {
-	        var bestDir = Direction.Straight;
-	        string bestMask = string.Empty;
-	        int bestWeight = -1;
-	        foreach (Direction d in Enum.GetValues(typeof (Direction)))
-	        {
-	            string mask1;
-
-                var w = GetAlignmentAndWeight(a, b.GetChain(d), out mask1);
-	            if (w > bestWeight)
-	            {
-	                bestWeight = w;
-	                bestMask = mask1;
-	                bestDir = d;
-	            }
-	        }
-
-	        direction = bestDir;
-	        mask = bestMask.Trim('?');
-	        return bestWeight;
-	    }
-
-        private static int GetAlignmentAndWeight(Nucleotide[] a, Nucleotide[] b, out string mask)
-        {
-            if (a.Length > b.Length)
-            {
-                var q = a;
-                a = b;
-                b = q;
-            }
-
-            var ret = 0;
-            var bestMask = string.Empty;
-            var tmp = new StringBuilder(Math.Max(a.Length, b.Length));
-            for (int s = 0; s < b.Length + a.Length - 1; s++) // s - смещение a относительно b
-            {
-                int w = 0;
-                var sa = Math.Max(0, a.Length - s - 1); // откуда начинать отсчёт от a
-                var sb = Math.Max(0, s + 1 - a.Length); // откуда начинать отсчёт от b
-                var len = Math.Min(a.Length - sa, b.Length - sb);
-                for (int i = 0; i < len; i++) // безим по смещённым последовательностям
-                {
-                    var na = a[sa+i];
-                    var nb = b[sb + i];
-                    if (na == nb)
-                    {
-                        tmp.Append(na);
-                        w++;
-                    }
-                    else
-                        tmp.Append("?");
-                }
-                if (w > ret)
-                {
-                    ret = w;
-                    bestMask = tmp.ToString();
-                }
-                tmp.Clear();
-            }
-            mask = bestMask;
-            return ret;
-        }
-
-	    private static void WriteElementsLog(IEnumerable<ElementGroup> els, string path, string comment)
-	    {
-            var dir = Path.GetDirectoryName(path);
-            if (dir != null && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-	        File.Delete(path);
-	        using (var f = File.CreateText(path))
-	        {
-                f.WriteLine(comment);
-                f.WriteLine("id   grpSz chainLen\toriginalChain\tinversed\treversed\trevinversed");
-	            int id = 1;
-	            foreach (var el in els)
-	            {
-	                var cnt = el.Count;
-	                var chain1 = el.Chain.Select(p => p.ToNucleotide()).ToArray();
-	                var chain2 = chain1.Select(p => p.Inverse()).ToArray();
-	                var chain3 = chain1.Reverse().ToArray();
-                    var chain4 = chain2.Reverse().ToArray();
-                    f.WriteLine(id++ + "\t" + cnt + "\t" + chain1.Length + "\t" +
-                                string.Join("", chain1) + "\t" +
-                                string.Join("", chain2) + "\t" +
-                                string.Join("", chain3) + "\t" +
-                                string.Join("", chain4) + "\t");
-	            }
-                f.Flush();
-                f.Close();
-	        }
+            Console.WriteLine("fin");
+	        Console.ReadKey();
 	    }
 
 		private static void TransTest(int origLen, IEnumerable<ElementGroup> groups, TextComparer cmp)

@@ -35,13 +35,19 @@ namespace MotifSeeker
         /// </summary>
         public readonly int Shift2;
 
-        public AlignmentResult(int weight, string mask, Direction direction, int shift1, int shift2)
+        public readonly int Id1;
+
+        public readonly int Id2;
+
+        public AlignmentResult(int weight, string mask, Direction direction, int shift1, int shift2, int id1, int id2)
         {
             Weight = weight;
             Mask = mask;
             Direction = direction;
             Shift1 = shift1;
             Shift2 = shift2;
+            Id1 = id1;
+            Id2 = id2;
         }
     }
 
@@ -54,7 +60,7 @@ namespace MotifSeeker
         /// Выравнивание двух последовательностей.
         /// Учитывает перестановки A-T и G-C, а также реверсии.
         /// </summary>
-        public static AlignmentResult Align(Nucleotide[] a0, Nucleotide[] b0)
+        public static AlignmentResult Align(Nucleotide[] a0, Nucleotide[] b0, int id1 = 0, int id2 = 0)
         {
             var bestDir = Direction.Straight;
             string bestMask = string.Empty;
@@ -105,7 +111,7 @@ namespace MotifSeeker
             else
                 bestMask = bestMask.TrimEnd('?');
 
-            return new AlignmentResult(bestWeight, bestMask, bestDir, bestShift1, bestShift2);
+            return new AlignmentResult(bestWeight, bestMask, bestDir, bestShift1, bestShift2, id1, id2);
         }
     }
 }
