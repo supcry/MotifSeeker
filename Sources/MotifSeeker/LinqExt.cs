@@ -89,6 +89,24 @@ namespace MotifSeeker
             return data;
         }
 
+        public static T FirstWhereMax<T, TV>(this IEnumerable<T> lst, Func<T, TV> f, out TV val) where TV : IComparable
+        {
+            var data = default(T);
+            val = default(TV);
+            var get = false;
+            foreach (var item in lst)
+            {
+                var v = f(item);
+                if (v.CompareTo(val) <= 0 && get) continue;
+                get = true;
+                val = v;
+                data = item;
+            }
+            if (!get)
+                throw new Exception("Коллекция пуста");
+            return data;
+        }
+
         public static T FirstWhereMaxOrDefault<T, TV>(this IEnumerable<T> lst, Func<T, TV> f) where TV : IComparable
         {
             var data = default(T);
