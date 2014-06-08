@@ -19,7 +19,7 @@ namespace MotifSeeker
 
         readonly Random _rnd = new Random(1);
 
-        private readonly int[] _clasterId; // идентификатор кластера у объекта
+        private readonly int[] _clasterIds; // идентификатор кластера у объекта
 
         private Dictionary<int, Node> _nodes; // поиск, удаление
         private Dictionary<Pair, Edge> _edges; // поиск по паре, удаление
@@ -34,7 +34,7 @@ namespace MotifSeeker
             Debug.Assert(objs.Length == weights.Length);
             weights.ForEach(p => Debug.Assert(p.Length == weights.Length));
             _nodes = objs.Select((p, i) => new Node(i, new[] { i }, 2*weights[i][i], weights[i].Sum() - weights[i][i])).ToDictionary(p => p.Id);
-            _clasterId = Enumerable.Range(0, objs.Length).ToArray();
+            _clasterIds = Enumerable.Range(0, objs.Length).ToArray();
             _edges = new Dictionary<Pair, Edge>();
             for (int i = 0; i < weights.Length; i++)
             {
@@ -97,14 +97,16 @@ namespace MotifSeeker
                     Debug.Assert(cid2++ == id);
 
                 _totalEdgesWeight = _edges.Values.Sum(p => p.Weight) + _nodes.Values.Sum(p => p.SumWeightsInternal)/2;
-                for (int i = 0; i < _clasterId.Length; i++)
-                    _clasterId[i] = dicNextIds[_clasterId[i]];
+                for (int i = 0; i < _clasterIds.Length; i++)
+                    _clasterIds[i] = dicNextIds[_clasterIds[i]];
             }
 #if DEBUG
             CheckConsistency();
 #endif
             return ret;
         }
+
+        public int[] ClasterIds { get { return _clasterIds; } }
 
         /// <summary>
         /// Вычисляет вклад в общую модулярность от переноса одного узла в другой.
@@ -143,7 +145,7 @@ namespace MotifSeeker
             _edges.Remove(pairDst);
             var ids = nodeDst.Merge(nodeSrc, interconnectedWeight);
             foreach (var id in ids)
-                _clasterId[id] = nodeDst.Id;
+                _clasterIds[id] = nodeDst.Id;
             foreach (var id in _nodes.Keys.ToArray().Where(p => p != idDst && p != idSrc && _nodes.ContainsKey(p)))
             {
                 var pairSrc = new Pair(idSrc, id);
@@ -165,7 +167,7 @@ namespace MotifSeeker
             for(int i=0;i<_objs.Length;i++)
                 for (int j = 0; j < _objs.Length; j++)
                 {
-                    if(_clasterId[i] != _clasterId[j])
+                    if(_clasterIds[i] != _clasterIds[j])
                         continue;
                     var aij = _weights[i][j];
                     var ki = _weights[i].Sum();
@@ -194,7 +196,7 @@ namespace MotifSeeker
             {
                 Debug.Assert(n.Key == n.Value.Id);
                 foreach(var id in n.Value.ObjectIds)
-                    Debug.Assert(_clasterId[id] == n.Value.Id);
+                    Debug.Assert(_clasterIds[id] == n.Value.Id);
             }
         }
 

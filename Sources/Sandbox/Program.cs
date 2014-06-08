@@ -100,17 +100,15 @@ namespace Sandbox
 			Console.WriteLine("TransTest (empty on peaks)");
 			TransTest(sfxEmpty.StrokeSize, emptyGroups2.Take(10), sfxPeaks);
 
-	        var peakClustering = new Clustering(peaksGroups2);
-            var emptyClustering = new Clustering(emptyGroups2);
+	        var peakClustering = new Clustering(peaksGroups);
+            var emptyClustering = new Clustering(emptyGroups);
 
-            peakClustering.WriteElementsLog("results/peakGroups.log.txt", "Совпавшие группы в интересных регионах");
-            emptyClustering.WriteElementsLog("results/emptyGroups.log.txt", "Совпавшие группы в фоновых регионах");
+	        var peakClusters = peakClustering.Work3();
+            var emptyClusters = emptyClustering.Work3();
 
-            peakClustering.WriteToFileForGephi("results/peakGroupsM3");
-            emptyClustering.WriteToFileForGephi("results/emptyGroupsM3");
+	        var peakClusters2 = peakClusters.Select(p => p.Align()).ToArray();
+            var emptyClusters2 = emptyClusters.Select(p => p.Align()).ToArray();
 
-	        var peakCLusters = peakClustering.Work3();
-            var emptyCLusters = emptyClustering.Work3();
 
             Console.WriteLine("fin");
 	        Console.ReadKey();

@@ -6,7 +6,7 @@ using MotifSeeker.Data.Dna;
 namespace MotifSeeker
 {
     /// <summary>
-    /// Результат работы алгоритма выравнивания.
+    /// Результат работы алгоритма парного выравнивания.
     /// </summary>
     public class AlignmentResult
     {
@@ -52,6 +52,108 @@ namespace MotifSeeker
     }
 
     /// <summary>
+    /// Результат работы алгоритма множественного выравнивания.
+    /// </summary>
+    public class MultiAlignmentResult
+    {
+        /// <summary>
+        /// Выровненные последовательности (верхний регистр - нуклеотид занимает не менее 50% от мотива)
+        /// </summary>
+        public readonly Nucleotide[][] Map;
+
+        /// <summary>
+        /// Направление второй последовательности.
+        /// </summary>
+        public readonly Direction[] Directions;
+
+        /// <summary>
+        /// Смещение маски относительно первой последовательности.
+        /// </summary>
+        public readonly int[] Shifts;
+
+        /// <summary>
+        /// Число букв в верхнем регистре от Map.
+        /// </summary>
+        public int[] Weights;
+
+        public string[] MapStr;
+
+        public Nucleotide[] Mask;
+
+        public string MaskStr;
+
+        public int[][] MotiffRaw;
+
+        public MultiAlignmentResult(int[] shifts, Direction[] directions, Nucleotide[][] map)
+        {
+            Shifts = shifts;
+            Directions = directions;
+            Map = map;
+            Prepare();
+        }
+
+        private void Prepare()
+        {
+            MapStr = Map.Select(p => p.ChainToString()).ToArray();
+            MotiffRaw = new int[Map.Max(p => p.Length)][];
+            Mask = new Nucleotide[MotiffRaw.Length];
+            for (int i = 0; i < MotiffRaw.Length; i++)
+            {
+                var tmp = new int[5];
+                for (int k = 0; k < Map.Length; k++)
+                {
+                    var m = Map[k];
+                    if(m.Length <= i)
+                        continue;
+                    var t = (int) m[i];
+                    if (t == 5)
+                        t = 4;
+                    tmp[t]++;
+                }
+                MotiffRaw[i] = tmp;
+                var total = tmp.Take(4).Sum();
+                if (total > Map.Length/3)
+                    Mask[i] = GetBest(tmp, total/2, total/3);
+                else
+                    Mask[i] = Nucleotide.All;
+            }
+            MaskStr = Mask.ChainToString();
+            Weights = new int[Map.Length];
+            for (int i = 0; i < Map.Length; i++)
+            {
+                var cnt = Map[i].Zip(Mask, (a, b) => a != Nucleotide.All && a == b ? 1 : 0).Count();
+                Weights[i] = cnt;
+            }
+        }
+
+        private static Nucleotide GetBest(int[] tmp, int threshold, int threshold2)
+        {
+            if (tmp[0] >= threshold)
+                return Nucleotide.A;
+            if (tmp[1] >= threshold)
+                return Nucleotide.T;
+            if (tmp[2] >= threshold)
+                return Nucleotide.G;
+            if (tmp[3] >= threshold)
+                return Nucleotide.C;
+            if (tmp[0] >= threshold2)
+                return Nucleotide.a;
+            if (tmp[1] >= threshold2)
+                return Nucleotide.t;
+            if (tmp[2] >= threshold2)
+                return Nucleotide.g;
+            if (tmp[3] >= threshold2)
+                return Nucleotide.c;
+            return Nucleotide.All;
+        }
+
+        public override string ToString()
+        {
+            return MaskStr.Trim().Replace(" ", "?");
+        }
+    }
+
+    /// <summary>
     /// Набор методов выравнивания
     /// </summary>
     public static class Alignment
@@ -63,7 +165,7 @@ namespace MotifSeeker
         public static AlignmentResult Align(Nucleotide[] a0, Nucleotide[] b0, int id1 = 0, int id2 = 0)
         {
             var bestDir = Direction.Straight;
-            string bestMask = string.Empty;
+            var bestMask = string.Empty;
             int bestWeight = -1;
             int bestShift1 = 0;
             int bestShift2 = 0;

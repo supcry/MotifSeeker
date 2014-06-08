@@ -14,7 +14,13 @@ namespace MotifSeeker.Data.Dna
 		G = 2,
 		C = 3,
         End = 4,
-        All = 5
+        All = 5,
+// ReSharper disable InconsistentNaming
+        a = 10,
+        t = 11,
+        g = 12,
+        c = 13,
+// ReSharper restore InconsistentNaming
 	}
 
     /// <summary>
@@ -84,21 +90,10 @@ namespace MotifSeeker.Data.Dna
                     throw new NotSupportedException();
             }
         }
-    }
 
-	/// <summary>
-	/// Четырёхбитный нуклеотид.
-	/// </summary>
-	public enum NucleotideBis : byte
-	{
-		A = 0,
-		T = 1,
-		G = 2,
-		C = 3,
-		Abis = 4,
-		Tbis = 5,
-		Gbis = 6,
-		Cbis = 7,
-		None = 15
-	}
+        public static string ChainToString(this Nucleotide[] chain)
+        {
+            return String.Join("", chain.Select(p => p!= Nucleotide.All ? p.ToString().Substring(0, 1) : " "));
+        }
+    }
 }

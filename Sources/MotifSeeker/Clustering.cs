@@ -12,14 +12,11 @@ namespace MotifSeeker
     public class Clustering
     {
         private readonly ElementGroup[] _nodes;
-        private readonly int?[] _clusterIds;
-
         private AlignmentResult[][] _edges;
 
-        public Clustering(ElementGroup[] elements)
+        public Clustering(IEnumerable<ElementGroup> elements)
         {
-            _nodes = elements;
-            _clusterIds = new int?[_nodes.Length];
+            _nodes = elements.OrderByDescending(p => p.Count).ToArray();
         }
 
         public void InitEdges()
@@ -117,171 +114,7 @@ namespace MotifSeeker
             }
         }
 
-        public List<ClusterData> Work(int minWeight0)
-        {
-            InitEdges();
-            Console.WriteLine("Запущена кластеризация " + _nodes.Length + " узлов");
-            var sw = Stopwatch.StartNew();
-            var thresholdQueue = new Queue<int>(_edges.SelectMany(p => p).Select(p => p.Weight).Distinct().OrderByDescending(p => p));
-
-            
-            int freeCnt = _nodes.Length;
-            var clusters = new List<ClusterData>();// последовательность кластеров здесь только растёт
-            while (thresholdQueue.Count > 0 && thresholdQueue.Peek() >= minWeight0 && freeCnt > 0) // продолжаем алгоритм, пока есть что добавлять
-            {
-                var thresholdWeight = thresholdQueue.Dequeue();
-                foreach (var edge in GetUnclosedEdges(thresholdWeight).OrderByDescending(p => p.Weight)) // бежим по всем рёбрам, которые пока не находятся целиком в кластерах
-                {
-                    var cl1 = _clusterIds[edge.Id1];
-                    var cl2 = _clusterIds[edge.Id2];
-
-                    if (cl1.HasValue && cl2.HasValue)
-                        continue;
-
-                    // Сначала идёт два симметричных случая, когда строго один из концов ребра уже находится в кластере.
-                    // Просто пробуем добавить узел в кластер.
-                    if (cl1.HasValue)
-                    {
-                        if (cl2.HasValue && cl1 != cl2)
-                            throw new Exception("Найдено два узла со связью из разных кластеров");
-                        Debug.Assert(!cl2.HasValue);
-                        if (TryToAddNodeToCluster(edge.Id2, clusters[cl1.Value], thresholdWeight - 2))
-                            freeCnt--;
-                        continue; // edge.Id2 - кандидат во вступление в кластер на следующей итерации.
-                    }
-                    if (cl2.HasValue)
-                    {
-                        if (cl1.HasValue && cl1 != cl2)
-                            throw new Exception("Найдено два узла со связью из разных кластеров");
-                        Debug.Assert(!cl1.HasValue);
-                        if (TryToAddNodeToCluster(edge.Id1, clusters[cl2.Value], thresholdWeight - 2))
-                            freeCnt--;
-                        continue; // edge.Id1 - кандидат во вступление в кластер на следующей итерации.
-                    }
-                    // Ни один из концов ребра не находится в кластере. Попробуем добавить его в один из уже существующих кластеров.
-                    // Если не получится, то создадим свой кластер для этой пары.
-                    bool added = false;
-// ReSharper disable AccessToForEachVariableInClosure
-                    var cluster = clusters.FirstWhereMaxOrDefault(p => GetMaxWeight(edge.Id1, edge.Id2, p).Sum());
-// ReSharper restore AccessToForEachVariableInClosure
-
-                    if (cluster != null && TryToAddNodeToCluster(edge.Id1, edge.Id2, cluster, thresholdWeight - 2))
-                    {
-                        freeCnt -= 2;
-                        added = true;
-                    }
-                    if (added)
-                        continue;
-                    cluster = new ClusterData(clusters.Count, edge.Id1, edge.Id2);
-                    clusters.Add(cluster);
-                    _clusterIds[edge.Id1] = cluster.ClusterId;
-                    _clusterIds[edge.Id2] = cluster.ClusterId;
-                    freeCnt -= 2;
-                }
-                Console.WriteLine("Порог кластеризации - " + thresholdWeight + ", осталось " + freeCnt + " свободных узлов." +
-                                  " Уже затрачено на работу: " + sw.Elapsed + " и выделено " + clusters.Count + " кластеров.");
-            }
-            sw.Stop();
-            Console.WriteLine("Кластеризация завершена за " + sw.Elapsed);
-            return clusters;
-        }
-
-        public List<ClusterData> Work2(int minWeight0, int minWeight1)
-        {
-            InitEdges();
-            Console.WriteLine("Запущена кластеризация второго типа для " + _nodes.Length + " узлов");
-            var sw = Stopwatch.StartNew();
-            int freeCnt = _nodes.Length;
-            const int fuzzyShift = 0;
-            var clusters = new List<ClusterData>();// последовательность кластеров здесь только растёт
-            // Сначала ищет разбивает всё на кластеры, состоящие из цепочек не ниже minWeight0.
-            for (int weight = minWeight0; weight >= minWeight1 && freeCnt > 0; weight--)
-            {
-                foreach (var edge in GetUnclosedEdges(weight).OrderByDescending(p => p.Weight))
-                    // бежим по всем рёбрам, которые пока не находятся целиком в кластерах
-                {
-                    var cl1 = _clusterIds[edge.Id1];
-                    var cl2 = _clusterIds[edge.Id2];
-
-                    if (cl1.HasValue && cl2.HasValue)
-                        continue;
-
-                    // Сначала идёт два симметричных случая, когда строго один из концов ребра уже находится в кластере.
-                    // Просто пробуем добавить узел в кластер.
-                    if (cl1.HasValue)
-                    {
-                        if (cl2.HasValue && cl1 != cl2)
-                            throw new Exception("Найдено два узла со связью из разных кластеров");
-                        Debug.Assert(!cl2.HasValue);
-                        if (TryToAddNodeToClusterByChain(edge.Id2, clusters[cl1.Value], weight - fuzzyShift))
-                            freeCnt--;
-                        continue; // edge.Id2 - кандидат во вступление в кластер на следующей итерации.
-                    }
-                    if (cl2.HasValue)
-                    {
-                        if (cl1.HasValue && cl1 != cl2)
-                            throw new Exception("Найдено два узла со связью из разных кластеров");
-                        Debug.Assert(!cl1.HasValue);
-                        if (TryToAddNodeToClusterByChain(edge.Id1, clusters[cl2.Value], weight - fuzzyShift))
-                            freeCnt--;
-                        continue; // edge.Id1 - кандидат во вступление в кластер на следующей итерации.
-                    }
-                    // Ни один из концов ребра не находится в кластере. Попробуем добавить его в один из уже существующих кластеров.
-                    // Если не получится, то создадим свой кластер для этой пары.
-
-                    // ReSharper disable AccessToForEachVariableInClosure
-                    var cluster = clusters.FirstWhereMaxOrDefault(p => GetMaxWeight(edge.Id1, edge.Id2, p).Max());
-                    // ReSharper restore AccessToForEachVariableInClosure
-
-                    if (cluster != null)
-                    {
-                        bool added = false;
-                        if (TryToAddNodeToClusterByChain(edge.Id1, cluster, weight - fuzzyShift))
-                        {
-                            freeCnt--;
-                            added = true;
-                        }
-                        if (TryToAddNodeToClusterByChain(edge.Id2, cluster, weight - fuzzyShift))
-                        {
-                            freeCnt--;
-                            added = true;
-                        }
-                        if (added)
-                            continue;
-                    }
-                    if (weight == minWeight0) // только на первой итерации можно создавать кластеры
-                    {
-                        cluster = new ClusterData(clusters.Count, edge.Id1, edge.Id2);
-                        clusters.Add(cluster);
-                        _clusterIds[edge.Id1] = cluster.ClusterId;
-                        _clusterIds[edge.Id2] = cluster.ClusterId;
-                        freeCnt -= 2;
-                        Console.WriteLine("c");
-                    }
-                }
-
-                if (weight == minWeight0) // только на первой итерации можно создавать кластеры
-
-                    Console.WriteLine("Первая итерация прошла. Порог кластеризации - " + weight + ", осталось " +
-                                      freeCnt + " свободных узлов." +
-                                      " Уже затрачено на работу: " + sw.Elapsed + " и выделено " + clusters.Count +
-                                      " кластеров.");
-                else
-                    Console.WriteLine("Порог кластеризации - " + weight + ", осталось " + freeCnt +
-                                      " свободных узлов." +
-                                      " Уже затрачено на работу: " + sw.Elapsed + " и выделено " + clusters.Count +
-                                      " кластеров.");
-            }
-
-
-
-            // Затем добавляет оставшиеся элементы к имеющимся кластерам по алгоритму k-ближайших соседей с порогом minWeight1
-            sw.Stop();
-            Console.WriteLine("Кластеризация завершена за " + sw.Elapsed);
-            return clusters;
-        }
-
-        public List<ClusterData> Work3(int cut = 3)
+        public List<Cluster> Work3(int cut = 3)
         {
             InitEdges();
             Console.WriteLine("Запущена кластеризация второго типа для " + _nodes.Length + " узлов");
@@ -299,119 +132,40 @@ namespace MotifSeeker
             while (m.Iterate())
                 Console.WriteLine("Iter[" + iter++ + "]:" + m.CalcTotalModularity());
             Console.WriteLine("Result:" + m.CalcTotalModularity());
-
-
-
-            // Затем добавляет оставшиеся элементы к имеющимся кластерам по алгоритму k-ближайших соседей с порогом minWeight1
             sw.Stop();
             Console.WriteLine("Кластеризация завершена за " + sw.Elapsed);
-            return null;
-        }
-
-        /// <summary>
-        /// Возвращает последовательность связей, два конца которых пока не находятся в кластерах.
-        /// </summary>
-        private IEnumerable<AlignmentResult> GetUnclosedEdges(int minWeight)
-        {
-// ReSharper disable once LoopCanBeConvertedToQuery
-            foreach(var line in _edges)
-                foreach (var edge in line)
+            var clusterIds = m.ClasterIds;
+            var ret = new List<Cluster>();
+            for (int i = 0; i < m.NodesCount; i++)
+            {
+                // переобозначим элементы каждого кластера
+                int id = 0;
+                var dic = new Dictionary<int, int>();
+                for (int j = 0; j < clusterIds.Length; j++)
                 {
-                    if (edge.Weight < minWeight)
+                    if(clusterIds[j] != i)
                         continue;
-                    if (_clusterIds[edge.Id1].HasValue && _clusterIds[edge.Id2].HasValue)
-                        continue;
-                    yield return edge;
+                    dic.Add(id++,j);
                 }
-        }
-
-        private bool TryToAddNodeToCluster(int nodeId, ClusterData cluster, int minWeight)
-        {
-            int weight = 0;
-            foreach (var id in cluster.NodeIds)
-            {
-                var edge = GetEdge(nodeId, id);
-                if(edge.Weight < minWeight)
-                    return false;
-                weight += edge.Weight;
-            }
-            Debug.Assert(!_clusterIds[nodeId].HasValue);
-            cluster.Put(weight, nodeId);
-            _clusterIds[nodeId] = cluster.ClusterId;
-            return true;
-        }
-
-        private bool TryToAddNodeToClusterByChain(int nodeId, ClusterData cluster, int minWeight)
-        {
-            int weight = 0;
-            bool add = false;
-            foreach (var id in cluster.NodeIds)
-            {
-                var edge = GetEdge(nodeId, id);
-                if (edge.Weight >= minWeight)
-                    add = true;
-                weight += edge.Weight;
-            }
-            if (!add)
-                return false;
-            Debug.Assert(!_clusterIds[nodeId].HasValue);
-            cluster.Put(weight, nodeId);
-            _clusterIds[nodeId] = cluster.ClusterId;
-            return true;
-        }
-
-        private bool TryToAddNodeToClusterByMean(int nodeId, ClusterData cluster, int minWeight)
-        {
-            int weight = 0;
-            bool add = false;
-            foreach (var id in cluster.NodeIds)
-            {
-                var edge = GetEdge(nodeId, id);
-                if (edge.Weight >= minWeight)
-                    add = true;
-                weight += edge.Weight;
-            }
-            if (!add)
-                return false;
-            Debug.Assert(!_clusterIds[nodeId].HasValue);
-            cluster.Put(weight, nodeId);
-            _clusterIds[nodeId] = cluster.ClusterId;
-            return true;
-        }
-
-        private bool TryToAddNodeToCluster(int nodeId1, int nodeId2, ClusterData cluster, int minWeight)
-        {
-            int weight = GetEdge(nodeId1, nodeId2).Weight;
-            foreach (var nodeId in new[] { nodeId1, nodeId2})
-                foreach (var id in cluster.NodeIds)
+                var nodes = new ElementGroup[dic.Count];
+                var edges = new AlignmentResult[dic.Count][];
+                for (int j = 0; j < dic.Count; j++)
                 {
-                    var edge = GetEdge(nodeId, id);
-                    if (edge.Weight < minWeight)
-                        return false;
-                    weight += edge.Weight;
+                    nodes[j] = _nodes[dic[j]];
+                    edges[j] = new AlignmentResult[j];
+                    for (int k = 0; k < j; k++)
+                    {
+                        edges[j][k] = _edges[dic[j]][dic[k]];
+                        if (k == 0)
+                        {
+                            var tt = Alignment.Align(nodes[j].NucleoChain, nodes[k].NucleoChain, 0, 0);
+                            Debug.Assert(tt.Mask == edges[j][k].Mask);
+                        }
+                    }
                 }
-            cluster.Put(weight, nodeId1, nodeId2);
-            Debug.Assert(!_clusterIds[nodeId1].HasValue);
-            Debug.Assert(!_clusterIds[nodeId2].HasValue);
-            _clusterIds[nodeId1] = cluster.ClusterId;
-            _clusterIds[nodeId2] = cluster.ClusterId;
-            return true;
-        }
-
-        private int[] GetMaxWeight(int nodeId1, int nodeId2, ClusterData cluster)
-        {
-            var ws = new int[2];
-            for (int i = 0; i < new[] {nodeId1, nodeId2}.Length; i++)
-            {
-                var nodeId = new[] {nodeId1, nodeId2}[i];
-                foreach (var id in cluster.NodeIds)
-                {
-                    var edge = GetEdge(nodeId, id);
-                    if (edge.Weight > ws[i])
-                        ws[i] = edge.Weight;
-                }
+                ret.Add(new Cluster(ret.Count, nodes, edges));
             }
-            return ws;
+            return ret;
         }
 
         private AlignmentResult GetEdge(int nodeId1, int nodeId2)
@@ -428,36 +182,52 @@ namespace MotifSeeker
     }
 
 
-    public class ClusterData
+    public class Cluster
     {
         public readonly int ClusterId;
+        public readonly ElementGroup[] Nodes;
+        public AlignmentResult[][] Edges;
 
-        private readonly List<int> _ids = new List<int>();
-
-        public int SummaryWeight { get; private set; }
-
-        public int Count { get { return _ids.Count; } }
-
-        public double Ratio { get { return Count > 1 ? SummaryWeight/(Count*(Count-1)/2.0) : 0; } }
-
-        public IEnumerable<int> NodeIds { get { return _ids; } } 
-
-        public ClusterData(int clusterId, int id1, int id2)
+        public Cluster(int clusterId, ElementGroup[] nodes, AlignmentResult[][] edges)
         {
             ClusterId = clusterId;
-            _ids.Add(id1);
-            _ids.Add(id2);
+            Nodes = nodes;
+            Edges = edges;
         }
 
-        public void Put(int addWeight, params int[] ids)
-        {
-            _ids.AddRange(ids);
-            SummaryWeight += addWeight;
-        }
 
         public override string ToString()
         {
-            return "Cnt:" + Count + ", Ratio:" + Ratio.ToString("F");
+            return "Cnt:" + Nodes.Sum(p => p.Count);
+        }
+
+        public MultiAlignmentResult Align()
+        {
+            var parent = Nodes[0];
+            
+            var directions = new Direction[Nodes.Length];
+            var shifts = new int[Nodes.Length];
+            directions[0] = Direction.Straight;
+            shifts[0] = 0;
+            
+            for (int i = 1; i < Nodes.Length; i++)
+            {
+                var a = Alignment.Align(parent.NucleoChain, Nodes[i].NucleoChain);
+                directions[i] = a.Direction;
+                shifts[i] = a.Shift1 - a.Shift2;
+            }
+            var minShift = shifts.Min();
+            Debug.Assert(minShift <= 0);
+            var map = new Nucleotide[Nodes.Length][];
+            for (int i = 0; i < Nodes.Length; i++)
+            {
+                var s = shifts[i] -= minShift;
+                var chain = Nodes[i].NucleoChain.GetChain(directions[i]);
+                if (s > 0)
+                    chain = Enumerable.Repeat(Nucleotide.All, s).Concat(chain).ToArray();
+                map[i] = chain;
+            }
+            return new MultiAlignmentResult(shifts, directions, map);
         }
     }
 }
