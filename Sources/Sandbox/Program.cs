@@ -21,97 +21,127 @@ namespace Sandbox
 	{
 	    static void MainPlan()
 	    {
-            // План:
-            //  1. получить последовательности участков с пиками и без пиков
-            //  2. построить суффиксы по участкам с пиками и без пиков
-            //  3. удостовериться, что участки в обоих суф.структурах находятся.
+	        // План:
+	        //  1. получить последовательности участков с пиками и без пиков
+	        //  2. построить суффиксы по участкам с пиками и без пиков
+	        //  3. удостовериться, что участки в обоих суф.структурах находятся.
 
-            //  1. получить последовательности участков с пиками и без пиков
-            var t = DateTime.Now;
-            var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10).ToArray();
+	        //  1. получить последовательности участков с пиками и без пиков
+	        var t = DateTime.Now;
+	        var flow = NarrowPeaksMerger.GetMergedNarrowPeaks(ChromosomeEnum.Chr1, 10).ToArray();
 
-            
-            //MergedBarGraph.DrawPeaks(flow, 5, 0, 2000000);
 
-            var peakRegions = new List<MergedNarrowPeak>();
-            var noiseRegions = new List<MergedNarrowPeak>();
-            var nonRegions = new List<KeyValuePair<int, int>>();
+	        //MergedBarGraph.DrawPeaks(flow, 5, 0, 2000000);
 
-            const int minCellsPerRegion = 2;
-            const int minAverageValue1 = 200;
-            const int minSizeOfRegion = 100;
-			const int maxSizeOfRegion = 10000;
-            int lastPos = 0;
+	        var peakRegions = new List<MergedNarrowPeak>();
+	        var noiseRegions = new List<MergedNarrowPeak>();
+	        var nonRegions = new List<KeyValuePair<int, int>>();
 
-            int totalPeaksLen = 0;
-            int totalPeaksLenAvg = 0;
-            int totalNonpeaksLen = 0;
+	        const int minCellsPerRegion = 2;
+	        const int minAverageValue1 = 200;
+	        const int minSizeOfRegion = 100;
+	        const int maxSizeOfRegion = 10000;
+	        int lastPos = 0;
 
-            foreach (var peak in flow)
-            {
-                // добавим регион без пиков, если он есть
-				if (peak.StartPosMin - lastPos >= minSizeOfRegion && peak.StartPosMin - lastPos <= maxSizeOfRegion)
-                {
-                    if (totalNonpeaksLen < 150000)
-                        nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
-                    totalNonpeaksLen += peak.StartPosMin - lastPos;
-                }
-                Debug.Assert(lastPos <= peak.EndPosMax + minSizeOfRegion);
-                lastPos = peak.EndPosMax;
-                // определим качество региона
-                if (peak.Count < minCellsPerRegion || peak.AvgValue1 < minAverageValue1 || peak.Size < minSizeOfRegion)
-                {
-                    noiseRegions.Add(peak);
-                    continue;
-                }
-                Debug.Assert(peak.StartPos >= 0);
-                Debug.Assert(peak.EndPos >= 0);
-                peakRegions.Add(peak);
-                totalPeaksLen += peak.EndPosMax - peak.StartPosMin;
-                totalPeaksLenAvg += peak.EndPos - peak.StartPos;
-            }
-            peakRegions.TrimExcess();
-            nonRegions.TrimExcess();
-            Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
-            Console.WriteLine("PeaksTotalLen=" + totalPeaksLen + ", EmptyTotalLen=" + totalNonpeaksLen);
+	        int totalPeaksLen = 0;
+	        int totalPeaksLenAvg = 0;
+	        int totalNonpeaksLen = 0;
 
-            //MergedBarGraph.DrawPeaks(peakRegions, 5, 0, 20000000);
-            //  2. построить суффиксы по участкам с пиками и без пиков
-            t = DateTime.Now;
-            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
-            Console.WriteLine("Chromosome converted, dt=" + (DateTime.Now - t));
-            t = DateTime.Now;
-            var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray(), 10);
-            Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxPeaks.StrokeSize + ", elementGroups=" + sfxPeaks.GetElementGroups().Count);
-            t = DateTime.Now;
-            var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray(), 10);
-			Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxEmpty.StrokeSize + ", elementGroups=" + sfxEmpty.GetElementGroups().Count);
+	        foreach (var peak in flow)
+	        {
+	            // добавим регион без пиков, если он есть
+	            if (peak.StartPosMin - lastPos >= minSizeOfRegion && peak.StartPosMin - lastPos <= maxSizeOfRegion)
+	            {
+	                if (totalNonpeaksLen < 150000)
+	                    nonRegions.Add(new KeyValuePair<int, int>(lastPos, peak.StartPosMin));
+	                totalNonpeaksLen += peak.StartPosMin - lastPos;
+	            }
+	            Debug.Assert(lastPos <= peak.EndPosMax + minSizeOfRegion);
+	            lastPos = peak.EndPosMax;
+	            // определим качество региона
+	            if (peak.Count < minCellsPerRegion || peak.AvgValue1 < minAverageValue1 || peak.Size < minSizeOfRegion)
+	            {
+	                noiseRegions.Add(peak);
+	                continue;
+	            }
+	            Debug.Assert(peak.StartPos >= 0);
+	            Debug.Assert(peak.EndPos >= 0);
+	            peakRegions.Add(peak);
+	            totalPeaksLen += peak.EndPosMax - peak.StartPosMin;
+	            totalPeaksLenAvg += peak.EndPos - peak.StartPos;
+	        }
+	        peakRegions.TrimExcess();
+	        nonRegions.TrimExcess();
+	        Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
+	        Console.WriteLine("PeaksTotalLen=" + totalPeaksLen + ", EmptyTotalLen=" + totalNonpeaksLen);
 
-		    var peaksGroups = sfxPeaks.GetElementGroups();
-			var emptyGroups = sfxEmpty.GetElementGroups();
+	        //MergedBarGraph.DrawPeaks(peakRegions, 5, 0, 20000000);
+	        //  2. построить суффиксы по участкам с пиками и без пиков
+	        t = DateTime.Now;
+	        var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
+	        Console.WriteLine("Chromosome converted, dt=" + (DateTime.Now - t));
+	        t = DateTime.Now;
+	        var sfxPeaks = SuffixBuilder.BuildMany2(peakRegions.Select(p => chr.GetPack(p.StartPos, p.Size)).ToArray(), 10);
+	        Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxPeaks.StrokeSize +
+	                          ", elementGroups=" + sfxPeaks.GetElementGroups().Count);
+	        t = DateTime.Now;
+	        var sfxEmpty = SuffixBuilder.BuildMany2(nonRegions.Select(p => chr.GetPack(p.Key, p.Value - p.Key)).ToArray(),
+	            10);
+	        Console.WriteLine("Empty sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxEmpty.StrokeSize +
+	                          ", elementGroups=" + sfxEmpty.GetElementGroups().Count);
 
-			var peaksGroups2 = peaksGroups.OrderByDescending(p => p.Count).ToArray();
-            var emptyGroups2 = emptyGroups.OrderByDescending(p => p.Count).ToArray();
+	        var peaksGroups = sfxPeaks.GetElementGroups();
+	        var emptyGroups = sfxEmpty.GetElementGroups();
 
-			Console.WriteLine("TransTest (peaks on peaks)");
-			TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxPeaks);
-			Console.WriteLine("TransTest (peaks on empty)");
-		    TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxEmpty);
-			Console.WriteLine("TransTest (empty on peaks)");
-			TransTest(sfxEmpty.StrokeSize, emptyGroups2.Take(10), sfxPeaks);
+	        var peaksGroups2 = peaksGroups.OrderByDescending(p => p.Count).ToArray();
+	        var emptyGroups2 = emptyGroups.OrderByDescending(p => p.Count).ToArray();
+
+	        Console.WriteLine("TransTest (peaks on peaks)");
+	        TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxPeaks);
+	        Console.WriteLine("TransTest (peaks on empty)");
+	        TransTest(sfxPeaks.StrokeSize, peaksGroups2.Take(10), sfxEmpty);
+	        Console.WriteLine("TransTest (empty on peaks)");
+	        TransTest(sfxEmpty.StrokeSize, emptyGroups2.Take(10), sfxPeaks);
 
 	        var peakClustering = new Clustering(peaksGroups);
-            var emptyClustering = new Clustering(emptyGroups);
+	        var emptyClustering = new Clustering(emptyGroups);
 
-	        var peakClusters = peakClustering.Work3();
-            var emptyClusters = emptyClustering.Work3();
+	        var peakClusters = peakClustering.Work3(0);
+	        var emptyClusters = emptyClustering.Work3(0);
 
-	        var peakClusters2 = peakClusters.Select(p => p.Align()).ToArray();
-            var emptyClusters2 = emptyClusters.Select(p => p.Align()).ToArray();
+	        var peakClusters2 = peakClusters.Where(p => p.Nodes.Length > 1).Select(p => p.Align()).ToArray();
+	        var emptyClusters2 = emptyClusters.Select(p => p.Align()).ToArray();
 
+	        var peakMotifs = peakClusters2.Select(p => Motiff.ExtractMotiff(p.Map)).ToArray();
+	        var emptyMotifs = emptyClusters2.Select(p => Motiff.ExtractMotiff(p.Map)).ToArray();
 
-            Console.WriteLine("fin");
+            var spikeMotif = Motiff.ExtractMotiff(peakClusters2.Take(3).SelectMany(p => p.Map).ToArray());
+
+	        TransMotiffTest(peakMotifs, peakClusters2, "peaks vs peaks");
+	        TransMotiffTest(peakMotifs, emptyClusters2, "peaks vs empty");
+
+	        TransMotiffTest(emptyMotifs, emptyClusters2, "empty vs empty");
+	        TransMotiffTest(emptyMotifs, peakClusters2, "empty vs peaks");
+
+            TransMotiffTest(new[] { spikeMotif }, peakClusters2, "spike vs peaks");
+            TransMotiffTest(new[] { spikeMotif }, emptyClusters2, "spike vs empty");
+
+	        Console.WriteLine("fin");
 	        Console.ReadKey();
+	    }
+
+	    static void TransMotiffTest(Motiff[] ms, MultiAlignmentResult[] rs, string name)
+	    {
+            Console.WriteLine("TransMotiffTest(" + name + ")");
+	        foreach (var m in ms)
+	        {
+                Console.WriteLine("  m: " + m + ", cnt=" + m.Count);
+	            foreach (var r in rs)
+	            {
+	                var fs = m.CalcMaxScore(r.Map);
+                    Console.WriteLine("    r: " + r.MaskStr.Trim() + " factor: " + fs.MinMeanMaxStr(4, true));
+	            }
+	        }
 	    }
 
 		private static void TransTest(int origLen, IEnumerable<ElementGroup> groups, TextComparer cmp)

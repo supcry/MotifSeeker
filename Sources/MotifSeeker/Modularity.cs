@@ -17,7 +17,7 @@ namespace MotifSeeker
         private readonly int[][] _weights;
         private readonly int _sumOfWeights;
 
-        readonly Random _rnd = new Random(1);
+        readonly Random _rnd;
 
         private readonly int[] _clasterIds; // идентификатор кластера у объекта
 
@@ -25,11 +25,11 @@ namespace MotifSeeker
         private Dictionary<Pair, Edge> _edges; // поиск по паре, удаление
         private int _totalEdgesWeight; // суммарный вес в _edges
 
-        public Modularity(object[] objs, int[][] weights)
+        public Modularity(object[] objs, int[][] weights, int seed = 1)
         {
             _objs = objs;
             _weights = weights;
-
+            _rnd = new Random(seed);
             _totalEdgesWeight = 0;
             Debug.Assert(objs.Length == weights.Length);
             weights.ForEach(p => Debug.Assert(p.Length == weights.Length));

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -24,6 +25,31 @@ namespace MotifSeeker
             if(count == 0)
                 return new Tuple<float, float, float>(0,float.NaN,0);
             return new Tuple<float, float, float>(min, (float)(mean/count), max);
+        }
+
+        public static string MinMeanMaxStr(this IEnumerable<double> flow, int dig = 2, bool skipMin = false)
+        {
+            double min = double.MaxValue;
+            double mean = 0;
+            double max = double.MinValue;
+            int count = 0;
+            foreach (var f in flow)
+            {
+                if (f > max)
+                    max = f;
+                if (f < min)
+                    min = f;
+                mean += f;
+                count++;
+            }
+            if (count == 0)
+                return "none";
+            mean /= count;
+            Debug.Assert(min <= mean);
+            Debug.Assert(mean <= max);
+            if(skipMin)
+                return "avg: " + Math.Round(mean, dig) + ", max: " + Math.Round(max, dig);
+            return "min: " + Math.Round(min, dig) + ", avg: " + Math.Round(mean, dig) + ", max: " + Math.Round(max, dig);
         }
 
         public static T[] ConcatArray<T>(this T[] a, T[] b)
@@ -212,6 +238,27 @@ namespace MotifSeeker
                 var item = lst[i];
                 var v = f(item);
                 if (v.CompareTo(val) < 0 || !get)
+                {
+                    get = true;
+                    val = v;
+                    id = i;
+                }
+            }
+            if (!get)
+                throw new Exception("Коллекция пуста");
+            return id;
+        }
+
+        public static int FirstIndexWhereMax<T, TV>(this T[] lst, Func<T, TV> f) where TV : IComparable
+        {
+            TV val = default(TV);
+            bool get = false;
+            int id = 0;
+            for (int i = 0; i < lst.Length; i++)
+            {
+                var item = lst[i];
+                var v = f(item);
+                if (v.CompareTo(val) > 0 || !get)
                 {
                     get = true;
                     val = v;

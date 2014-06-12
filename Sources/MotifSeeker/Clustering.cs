@@ -114,7 +114,7 @@ namespace MotifSeeker
             }
         }
 
-        public List<Cluster> Work3(int cut = 3)
+        public List<Cluster> Work3(int cut = 3, int seed = 1)
         {
             InitEdges();
             Console.WriteLine("Запущена кластеризация второго типа для " + _nodes.Length + " узлов");
@@ -126,7 +126,7 @@ namespace MotifSeeker
                 for (int j = 0; j < _nodes.Length; j++)
                     weights[i][j] = i != j ? GetEdge(i, j).Weight - 6 : 0;//_nodes[i].Chain.Length;
             }
-            var m = new Modularity(_nodes, weights);
+            var m = new Modularity(_nodes, weights, seed);
             Console.WriteLine("Start with:" + m.CalcTotalModularity());
             var iter = 1;
             while (m.Iterate())
@@ -207,11 +207,17 @@ namespace MotifSeeker
             
             var directions = new Direction[Nodes.Length];
             var shifts = new int[Nodes.Length];
-            directions[0] = Direction.Straight;
-            shifts[0] = 0;
+
+            var w = Alignment.GetWeightMatrix(Nodes.Select(p => p.NucleoChain).ToArray());
+            var baseId = w.FirstIndexWhereMax(a => a.Sum());
+
+            directions[baseId] = Direction.Straight;
+            shifts[baseId] = 0;
             
-            for (int i = 1; i < Nodes.Length; i++)
+            for (int i = 0; i < Nodes.Length; i++)
             {
+                if(i == baseId)
+                    continue;
                 var a = Alignment.Align(parent.NucleoChain, Nodes[i].NucleoChain);
                 directions[i] = a.Direction;
                 shifts[i] = a.Shift1 - a.Shift2;

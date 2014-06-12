@@ -215,5 +215,20 @@ namespace MotifSeeker
 
             return new AlignmentResult(bestWeight, bestMask, bestDir, bestShift1, bestShift2, id1, id2);
         }
+
+        public static int[][] GetWeightMatrix(Nucleotide[][] map)
+        {
+            var w = new int[map.Length][];
+            for (int i = 0; i < map.Length; i++)
+                w[i] = new int[map.Length];
+            for (int i = 0; i < map.Length; i++)
+                for (int j = 0; j < i; j++)
+                {
+                    var a = Alignment.Align(map[i], map[j], i, j);
+                    w[i][j] = a.Weight;
+                    w[j][i] = a.Weight;
+                }
+            return w;
+        }
     }
 }

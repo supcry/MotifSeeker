@@ -65,6 +65,7 @@
     <Compile Include="Helpers\StaticDictionary.cs" />
     <Compile Include="LinqExt.cs" />
     <Compile Include="Modularity.cs" />
+    <Compile Include="Motiff.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RandomExt.cs" />
     <Compile Include="Sfx\ElementGroup.cs" />
