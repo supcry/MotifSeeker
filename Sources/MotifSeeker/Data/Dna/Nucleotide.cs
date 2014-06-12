@@ -69,6 +69,8 @@ namespace MotifSeeker.Data.Dna
                     return Nucleotide.C;
                 case Nucleotide.C:
                     return Nucleotide.G;
+                case Nucleotide.All:
+                    return n;
                 default:
                     throw new NotSupportedException();
             }

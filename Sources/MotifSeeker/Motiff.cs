@@ -8,43 +8,35 @@ namespace MotifSeeker
 {
     public class Motiff
     {
+        /// <summary>
+        /// Простейщее представление мотива. N - нуклеотид содержится минимум в половине случаев, n - в трети, ? - нет явного победителя.
+        /// </summary>
         public readonly string MaskStr;
 
+        /// <summary>
+        /// Частоты встречамости нуклеотид. [позиция][нуклеотид]
+        /// </summary>
         public readonly int[][] Freq;
 
+        /// <summary>
+        /// Сумма каждого столбца из Freq
+        /// </summary>
         public readonly int[] Norm;
 
+        /// <summary>
+        /// На скольких элементарных мотивах построен этот вероятностный мотив.
+        /// </summary>
         public readonly int Count;
 
+        /// <summary>
+        /// Длина мотива в нуклеотидах.
+        /// </summary>
         public int Length { get { return Freq.Length; } }
 
-        public static Motiff ExtractMotiff(Nucleotide[][] map)
-        {
-            bool started = false;
-            var len = map.Max(p => p.Length);
-            var freq = new List<int[]>();
-            var cnt = map.Length;
-            for (int i = 0; i < len; i++)
-            {
-                var tmp = new int[4];
-                // ReSharper disable AccessToModifiedClosure
-                map.Where(p => p.Length > i && (int)p[i] <= 3).ForEach(p => tmp[(int)p[i]]++);
-                // ReSharper restore AccessToModifiedClosure
-                if (!started)
-                {
-                    if (tmp.Sum() > cnt / 2)
-                        started = true;
-                    else
-                        continue;
-                }
-                freq.Add(tmp);
-            }
-            var drop = freq.ToArray().Reverse().TakeWhile(p => p.Sum() < cnt / 2).Count();
-            freq.RemoveRange(freq.Count - drop, drop);
 
-            return new Motiff(cnt, freq.ToArray(), new string(freq.Select(p => GetMaskChar(p, cnt)).ToArray()));
-        }
-
+        /// <summary>
+        /// Создаёт мотив по выровненным цепочкам.
+        /// </summary>
         public static Motiff ExtractMotiff(Nucleotide[][] map, int[] mapFactor)
         {
             bool started = false;
@@ -103,7 +95,7 @@ namespace MotifSeeker
 
         public override string ToString()
         {
-            return MaskStr;
+            return MaskStr + ", cnt:" + Count;
         }
 
         public readonly double CalcScoreNormFactor;
@@ -132,12 +124,17 @@ namespace MotifSeeker
         public double CalcMaxScore(Nucleotide[] data)
         {
             var ret = 0.0;
-            for (int i = 0; i < data.Length - Length; i++)
+            foreach (Direction direction in Enum.GetValues(typeof (Direction)))
             {
-                var tmp = CalcScore(data, i);
-                if (tmp > ret)
-                    ret = tmp;
+                var b = data.GetChain(direction);
+                for (int i = 0; i < data.Length - Length; i++)
+                {
+                    var tmp = CalcScore(b, i);
+                    if (tmp > ret)
+                        ret = tmp;
+                }
             }
+            
             return ret;
         }
 

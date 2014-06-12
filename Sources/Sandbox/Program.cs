@@ -32,9 +32,11 @@ namespace Sandbox
 	    {
 	        public ChromosomeEnum Chr;
 
-	        public int Start;
+	        public readonly int Start;
 
-	        public int Size;
+            public readonly int Size;
+
+            public int End { get { return Start + Size; } }
 
             public Region() { }
 
@@ -75,6 +77,10 @@ namespace Sandbox
             int totalNonpeaksLenWoCut = 0;
             var lastChr = flow.First().Chr;
             var rnd = new Random(pars.RandomizePosOfNoiseSeed);
+
+            var empyQ = new Queue<int>();
+
+
             foreach (var peak in flow)
             {
                 // если пошли данные с другой хромосомы, то сбросим позицию
@@ -88,22 +94,34 @@ namespace Sandbox
                 if (peak.StartPosMin - lastPos > 0)
                 {
                     totalNonpeaksLenWoCut += peak.StartPosMin - lastPos;
-                    var size = Math.Min(peak.StartPosMin - lastPos, totalPeaksLen - totalNonpeaksLen);
-                    
-                    if (size > pars.MinSizeOfRegion)
+
+                    while (true)
                     {
-                        
-                        Region nr;
-                        if (pars.RandomizePosOfNoise)
+                        var size = peak.StartPosMin - lastPos;
+
+                        if (size > pars.MinSizeOfRegion && empyQ.Count > 0)
                         {
-                            var startPos = rnd.Next(lastPos, peak.StartPosMin - size);
-                            nr = new Region(lastChr, startPos, size);
-                        }else
-                            nr = new Region(lastChr, lastPos, size);
-                        totalNonpeaksLen += nr.Size;
-                        noiseRegions.Add(nr);
-                        Debug.Assert(nr.Start >= lastPos);
-                        Debug.Assert(nr.Start + nr.Size <= peak.StartPosMin);
+                            var sizeQ = empyQ.Peek();
+                            if (sizeQ < size)
+                                size = empyQ.Dequeue();
+                            else
+                                break;
+                            Region nr;
+                            if (pars.RandomizePosOfNoise)
+                            {
+                                var startPos = rnd.Next(lastPos, peak.StartPosMin - size);
+                                nr = new Region(lastChr, startPos, size);
+                            }
+                            else
+                                nr = new Region(lastChr, lastPos, size);
+                            totalNonpeaksLen += nr.Size;
+                            noiseRegions.Add(nr);
+                            Debug.Assert(nr.Start >= lastPos);
+                            Debug.Assert(nr.Start + nr.Size <= peak.StartPosMin);
+                            lastPos = nr.Start + nr.Size;
+                        }
+                        else
+                            break;
                     }
                 }
                 Debug.Assert(lastPos <= peak.EndPosMax + pars.MinSizeOfRegion);
@@ -118,6 +136,7 @@ namespace Sandbox
                 var pr = new Region(peak);
                 peakRegions.Add(pr);
                 totalPeaksLen += pr.Size;
+                empyQ.Enqueue(pr.Size);
             }
 
             Console.WriteLine("Expirement data merged, dt=" + (DateTime.Now - t));
@@ -193,7 +212,7 @@ namespace Sandbox
 	    {
 	        public int CutWeight = 6;
 
-	        public int Seed = 1;
+	        public int Seed = 100;
 
 	        public bool SetCoreWeights = false;
 
@@ -230,6 +249,112 @@ namespace Sandbox
 	    }
         #endregion GetMotiffs
 
+        #region GetROC
+
+	    public class GetRocParams
+	    {
+	        
+	    }
+
+        public static KeyValuePair<double[], double[]> GetROC(GetRocParams pars, Region[] rgPeaks, Region[] rgNoises, Motiff motiff, int cnt = 10000)
+	    {
+            var chrDic = new Dictionary<ChromosomeEnum, Chromosome>();
+            // подготовим данные для пиков
+            var vsPeak = new double[rgPeaks.Length];
+            for (int i = 0; i < rgPeaks.Length; i++)
+            {
+                var rgPeak = rgPeaks[i];
+                Chromosome c;
+                if (!chrDic.TryGetValue(rgPeak.Chr, out c))
+                    chrDic.Add(rgPeak.Chr, c = ChrManager.GetChromosome(rgPeak.Chr));
+                var pack = c.GetPack(rgPeak.Start, rgPeak.Size);
+                vsPeak[i] = motiff.CalcMaxScore(pack);
+            }
+            Array.Sort(vsPeak);
+            int vsPeakId = 0;
+            // подготовим данные для шума
+            var vsNoise = new double[rgNoises.Length];
+            for (int i = 0; i < rgNoises.Length; i++)
+            {
+                var rgNoise = rgNoises[i];
+                Chromosome c;
+                if (!chrDic.TryGetValue(rgNoise.Chr, out c))
+                    chrDic.Add(rgNoise.Chr, c = ChrManager.GetChromosome(rgNoise.Chr));
+                var pack = c.GetPack(rgNoise.Start, rgNoise.Size);
+                vsNoise[i] = motiff.CalcMaxScore(pack);
+            }
+            Array.Sort(vsNoise);
+            int vsNoiseId = 0;
+            // начинаем строить график
+            var x = new List<double>();
+            var y = new List<double>();
+
+            for (double thr = 0.0; thr <= 1.0; thr += 1.0/cnt)
+            {
+                while (vsPeakId < vsPeak.Length && vsPeak[vsPeakId] < thr)
+                    vsPeakId++;
+                while (vsNoiseId < vsNoise.Length && vsNoise[vsNoiseId] < thr)
+                    vsNoiseId++;
+                var sensitivity = 100.0*(vsPeak.Length - vsPeakId)/vsPeak.Length;
+                var specifity = 100.0 * (vsNoise.Length - vsNoiseId) / vsNoise.Length;
+
+                y.Add(sensitivity);
+                x.Add(specifity);
+            }
+            return new KeyValuePair<double[], double[]>(x.ToArray(), y.ToArray());
+	    }
+
+	    private static bool drawInited;
+        static void DrawROC(KeyValuePair<double[], double[]>[] pos, KeyValuePair<double[], double[]>[] neg)
+        {
+            #region head
+
+            if (!drawInited)
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                drawInited = true;
+            }
+            var form = new Form { Width = 800, Height = 800 };
+
+            var f = new ZedGraphControl
+            {
+                Anchor = AnchorStyles.Top,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Fill
+            };
+
+            var yaxis = f.GraphPane.YAxis;
+            yaxis.Type = AxisType.Linear;
+            yaxis.Scale.MaxAuto = false;
+            yaxis.Scale.MinAuto = false;
+            yaxis.Scale.Max = 100;
+            yaxis.Scale.Min = 0;
+
+            var xaxis = f.GraphPane.XAxis;
+            xaxis.Type = AxisType.Linear;
+            xaxis.Scale.MaxAuto = false;
+            xaxis.Scale.MinAuto = false;
+            xaxis.Scale.Max = 100;
+            xaxis.Scale.Min = 0;
+
+            f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
+            f.GraphPane.BarSettings.MinBarGap = 1000;
+            #endregion head
+
+            f.GraphPane.AddCurve("center", new double[] { 0, 100 }, new double[] { 0, 100 }, Color.Red);
+            for (int i = 0; i < pos.Length; i++)
+                f.GraphPane.AddCurve("p" + i, pos[i].Key, pos[i].Value, Color.FromArgb(0, (int)Math.Round(255.0*(1.0-i/(double)pos.Length)),0));
+            for (int i = 0; i < neg.Length; i++)
+                f.GraphPane.AddCurve("n" + i, neg[i].Key, neg[i].Value, Color.FromArgb(0, 0, (int)Math.Round(255.0 * (1.0 - i / (double)neg.Length))));
+            form.Controls.Add(f);
+            f.AxisChange();
+            f.Invalidate();
+            Application.Run(form);
+        }
+
+        #endregion GetROC
+
         static void MainPlan()
 	    {
 	        // План:
@@ -242,17 +367,18 @@ namespace Sandbox
 	        //     удостовериться, что участки в обоих суф.структурах находятся.
 	        ElementGroup[] elPeaks;
 	        ElementGroup[] elNoise;
-	        GetCandidateElements(new GetCandidateElementsParams(), peaksPos, noisePos, out elPeaks, out elNoise);
+	        GetCandidateElements(new GetCandidateElementsParams{MinGroupSize = 10}, peaksPos, noisePos, out elPeaks, out elNoise);
 
             //  3. кластеризовать элементы 
 	        Motiff[] mfPeaks;
             Motiff[] mfNoise;
             GetMotiffs(new GetMotiffsParams(), elPeaks, elNoise, out mfPeaks, out mfNoise);
 
-	        Console.WriteLine("fin");
-
             //  4. Построить ROC-кривую по обучающей хромосоме
+            DrawROC(mfPeaks.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray(),
+                    mfNoise.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray());
 
+            Console.WriteLine("fin");
 	        Console.ReadKey();
 	    }
 
@@ -283,9 +409,6 @@ namespace Sandbox
 			}
 			Console.WriteLine("origFactor=" + cntOrig + ", transFactor=" + Math.Round((double)origLen * cntTrans / cmp.StrokeSize, 3));
 		}
-
-	    
-
 
 		static void Main(string[] args)
 		{
@@ -389,6 +512,8 @@ namespace Sandbox
 
             Application.Run(form);
         }
+
+        
         #endregion trash
     }
 }
