@@ -15,6 +15,12 @@ namespace MotifSeeker.Data.DNaseI
     /// </summary>
 	public static class NarrowPeaksMerger
 	{
+        /// <summary>
+        /// Объединяет результаты классификации пиков по разным клеткам
+        /// </summary>
+        /// <param name="onlyChr">Фиксированная хромосома, либо вся ДНК.</param>
+        /// <param name="maxCellsCount">Максимальное число типов клеток.</param>
+        /// <returns>Последовательность слитых пиков.</returns>
 		public static IEnumerable<MergedNarrowPeak> GetMergedNarrowPeaks(ChromosomeEnum? onlyChr, int maxCellsCount)
 		{
 			var filter = new Dictionary<string, string> { { "type", "narrowPeak" }, {"view", "Peaks"} };

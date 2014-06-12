@@ -5,7 +5,7 @@ using MotifSeeker.Data.Dna;
 
 namespace MotifSeeker.Sfx
 {
-	public class ElementGroup
+    public class ElementGroup : IComparable<ElementGroup>
 	{
 		public readonly byte[] Chain;
 
@@ -28,7 +28,12 @@ namespace MotifSeeker.Sfx
 			return _hash;
 		}
 
-		public override string ToString()
+        public int CompareTo(ElementGroup other)
+        {
+            return -Count.CompareTo(other.Count);
+        }
+
+        public override string ToString()
 		{
 			return "Sz:" + Chain.Length + ",Cnt:" + Positions.Length + ",Pos0:" + Positions[0];
 		}

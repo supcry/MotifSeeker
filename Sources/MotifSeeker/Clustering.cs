@@ -114,7 +114,7 @@ namespace MotifSeeker
             }
         }
 
-        public List<Cluster> Work3(int cut = 3, int seed = 1)
+        public List<Cluster> Work3(int cut = 3, int seed = 1, bool setCoreWeights = false)
         {
             InitEdges();
             Console.WriteLine("Запущена кластеризация второго типа для " + _nodes.Length + " узлов");
@@ -124,7 +124,7 @@ namespace MotifSeeker
             {
                 weights[i] = new int[_nodes.Length];
                 for (int j = 0; j < _nodes.Length; j++)
-                    weights[i][j] = i != j ? GetEdge(i, j).Weight - 6 : 0;//_nodes[i].Chain.Length;
+                    weights[i][j] = i != j ? GetEdge(i, j).Weight - cut : (setCoreWeights ? _nodes[i].Count : 0);//_nodes[i].Chain.Length;
             }
             var m = new Modularity(_nodes, weights, seed);
             Console.WriteLine("Start with:" + m.CalcTotalModularity());
@@ -194,6 +194,8 @@ namespace MotifSeeker
             Nodes = nodes;
             Edges = edges;
         }
+
+        public int TotalCount { get { return Nodes.Sum(p => p.Count); } }
 
 
         public override string ToString()
