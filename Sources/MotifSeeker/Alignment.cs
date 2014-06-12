@@ -62,6 +62,11 @@ namespace MotifSeeker
         public readonly Nucleotide[][] Map;
 
         /// <summary>
+        /// В скольких экземпляраз присутствует строка из Map.
+        /// </summary>
+        public readonly int[] MapFactors;
+
+        /// <summary>
         /// Направление второй последовательности.
         /// </summary>
         public readonly Direction[] Directions;
@@ -84,11 +89,12 @@ namespace MotifSeeker
 
         public int[][] MotiffRaw;
 
-        public MultiAlignmentResult(int[] shifts, Direction[] directions, Nucleotide[][] map)
+        public MultiAlignmentResult(int[] shifts, Direction[] directions, Nucleotide[][] map, int[] mapFactors)
         {
             Shifts = shifts;
             Directions = directions;
             Map = map;
+            MapFactors = mapFactors;
             Prepare();
         }
 

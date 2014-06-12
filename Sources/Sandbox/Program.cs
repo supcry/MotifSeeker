@@ -213,8 +213,8 @@ namespace Sandbox
             var peakClusters2 = peakClusters.Where(p => p.TotalCount > pars.SkipClusterSize).Select(p => p.Align()).ToArray();
             var emptyClusters2 = emptyClusters.Where(p => p.TotalCount > pars.SkipClusterSize).Select(p => p.Align()).ToArray();
 
-            var peakMotifs = peakClusters2.Select(p => Motiff.ExtractMotiff(p.Map)).ToArray();
-            var emptyMotifs = emptyClusters2.Select(p => Motiff.ExtractMotiff(p.Map)).ToArray();
+            var peakMotifs = peakClusters2.Select(p => Motiff.ExtractMotiff(p.Map, p.MapFactors)).ToArray();
+            var emptyMotifs = emptyClusters2.Select(p => Motiff.ExtractMotiff(p.Map, p.MapFactors)).ToArray();
 
 	        if (pars.CrossTest)
 	        {

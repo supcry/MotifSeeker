@@ -227,6 +227,7 @@ namespace MotifSeeker
             var minShift = shifts.Min();
             Debug.Assert(minShift <= 0);
             var map = new Nucleotide[Nodes.Length][];
+            var mapFactors = new int[Nodes.Length];
             for (int i = 0; i < Nodes.Length; i++)
             {
                 var s = shifts[i] -= minShift;
@@ -234,8 +235,9 @@ namespace MotifSeeker
                 if (s > 0)
                     chain = Enumerable.Repeat(Nucleotide.All, s).Concat(chain).ToArray();
                 map[i] = chain;
+                mapFactors[i] = Nodes[i].Count;
             }
-            return new MultiAlignmentResult(shifts, directions, map);
+            return new MultiAlignmentResult(shifts, directions, map, mapFactors);
         }
     }
 }

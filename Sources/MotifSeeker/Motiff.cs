@@ -45,6 +45,37 @@ namespace MotifSeeker
             return new Motiff(cnt, freq.ToArray(), new string(freq.Select(p => GetMaskChar(p, cnt)).ToArray()));
         }
 
+        public static Motiff ExtractMotiff(Nucleotide[][] map, int[] mapFactor)
+        {
+            bool started = false;
+            var len = map.Max(p => p.Length);
+            var freq = new List<int[]>();
+            var cnt = mapFactor.Sum();
+            for (int i = 0; i < len; i++)
+            {
+                var tmp = new int[4];
+                for (int k = 0; k < map.Length; k++)
+                {
+                    var m = map[k];
+                    if (m.Length <= i || (int) m[i] > 3)
+                        continue;
+                    tmp[(int) m[i]] += mapFactor[k];
+                }
+                if (!started)
+                {
+                    if (tmp.Sum() > cnt / 2)
+                        started = true;
+                    else
+                        continue;
+                }
+                freq.Add(tmp);
+            }
+            var drop = freq.ToArray().Reverse().TakeWhile(p => p.Sum() < cnt / 2).Count();
+            freq.RemoveRange(freq.Count - drop, drop);
+
+            return new Motiff(cnt, freq.ToArray(), new string(freq.Select(p => GetMaskChar(p, cnt)).ToArray()));
+        }
+
         
 
         private Motiff(int cnt, int[][] freq, string maskStr)
