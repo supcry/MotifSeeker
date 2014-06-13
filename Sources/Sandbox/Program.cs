@@ -23,14 +23,13 @@ namespace Sandbox
             public int MinCellsPerRegion = 2;
 	        public int MinAverageValue1 = 200;
 	        public int MinSizeOfRegion = 100;
-	        public int MaxSizeOfRegion = 10000;
 	        public bool RandomizePosOfNoise = true;
-            public int RandomizePosOfNoiseSeed = 10000;
+            public int RandomizePosOfNoiseSeed = 1;
 	    }
 
 	    public class Region
 	    {
-	        public ChromosomeEnum Chr;
+            public readonly ChromosomeEnum Chr;
 
 	        public readonly int Start;
 
@@ -253,10 +252,79 @@ namespace Sandbox
 
 	    public class GetRocParams
 	    {
-	        
+	        public int DeltaCounts = 10000;
 	    }
 
-        public static KeyValuePair<double[], double[]> GetROC(GetRocParams pars, Region[] rgPeaks, Region[] rgNoises, Motiff motiff, int cnt = 10000)
+        /// <summary>
+        /// Данные для ROC-кривой от мотива.
+        /// </summary>
+	    public class RocCurve
+	    {
+            /// <summary>
+            /// Имя графика (мотива).
+            /// </summary>
+	        public string Name;
+
+            /// <summary>
+            /// Размер точки на графике.
+            /// </summary>
+            public double PointSize { get { return Math.Log(Count); } }
+
+            /// <summary>
+            /// Число прецендентов, на которых строится мотив.
+            /// </summary>
+	        public int Count;
+
+            /// <summary>
+            /// Значение по горизонтальной координате.
+            /// </summary>
+            public double[] X;
+
+            /// <summary>
+            /// Значения по вертикальной координате.
+            /// </summary>
+            public double[] Y;
+
+            /// <summary>
+            /// Доля площади под графиком (1 - весь график, 0 - ничего от графика, 0.5 - половина графика (худшее значение)
+            /// </summary>
+	        public double Area;
+
+	        public RocCurve(string name, int count, double[] x, double[] y)
+	        {
+	            Name = name;
+	            Count = count;
+	            X = x;
+	            Y = y;
+
+	            double lastX = 0;
+	            double lastY = 0;
+	            double area = 0;
+	            for (int i = 0; i < x.Length; i++)
+	            {
+	                if (lastX >= x[i])
+	                    continue;
+	                var dx = x[i] - lastX;
+	                var dy = y[i] - lastY;
+	                var yy = lastY;
+	                var area1 = yy*dx + dy*dx/2.0;
+	                area += area1;
+	                lastX = x[i];
+	                lastY = y[i];
+	            }
+	            if (lastX < 100.0)
+	            {
+                    var dx = 100.0 - lastX;
+                    var dy = 100.0 - lastY;
+                    var yy = lastY;
+                    var area1 = yy * dx + dy * dx / 2.0;
+                    area += area1;
+	            }
+	            Area = area/10000.0;
+	        }
+	    }
+
+        public static RocCurve GetROC(GetRocParams pars, Region[] rgPeaks, Region[] rgNoises, Motiff motiff)
 	    {
             var chrDic = new Dictionary<ChromosomeEnum, Chromosome>();
             // подготовим данные для пиков
@@ -289,7 +357,7 @@ namespace Sandbox
             var x = new List<double>();
             var y = new List<double>();
 
-            for (double thr = 0.0; thr <= 1.0; thr += 1.0/cnt)
+            for (double thr = 0.0; thr <= 1.0; thr += 1.0/pars.DeltaCounts)
             {
                 while (vsPeakId < vsPeak.Length && vsPeak[vsPeakId] < thr)
                     vsPeakId++;
@@ -301,19 +369,19 @@ namespace Sandbox
                 y.Add(sensitivity);
                 x.Add(specifity);
             }
-            return new KeyValuePair<double[], double[]>(x.ToArray(), y.ToArray());
+            return new RocCurve(motiff.MaskStr, motiff.Count, x.ToArray(), y.ToArray());
 	    }
 
-	    private static bool drawInited;
-        static void DrawROC(KeyValuePair<double[], double[]>[] pos, KeyValuePair<double[], double[]>[] neg)
+	    private static bool _drawInited;
+        static void DrawROC(RocCurve[] pos, RocCurve[] neg, RocCurve[] spc = null)
         {
             #region head
 
-            if (!drawInited)
+            if (!_drawInited)
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                drawInited = true;
+                _drawInited = true;
             }
             var form = new Form { Width = 800, Height = 800 };
 
@@ -321,8 +389,10 @@ namespace Sandbox
             {
                 Anchor = AnchorStyles.Top,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                Name = "ROC-кривая для мотивов Chr1",
             };
+            
 
             var yaxis = f.GraphPane.YAxis;
             yaxis.Type = AxisType.Linear;
@@ -330,6 +400,7 @@ namespace Sandbox
             yaxis.Scale.MinAuto = false;
             yaxis.Scale.Max = 100;
             yaxis.Scale.Min = 0;
+            yaxis.Title = new AxisLabel("txt", null, 10, Color.Black, false, false, false);
 
             var xaxis = f.GraphPane.XAxis;
             xaxis.Type = AxisType.Linear;
@@ -337,20 +408,47 @@ namespace Sandbox
             xaxis.Scale.MinAuto = false;
             xaxis.Scale.Max = 100;
             xaxis.Scale.Min = 0;
+            yaxis.Title = new AxisLabel("xxx", null, 10, Color.Black, false, false, false);
 
             f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
             f.GraphPane.BarSettings.MinBarGap = 1000;
             #endregion head
 
             f.GraphPane.AddCurve("center", new double[] { 0, 100 }, new double[] { 0, 100 }, Color.Red);
+            Console.WriteLine("ROC info:");
+            Console.WriteLine("positive:");
             for (int i = 0; i < pos.Length; i++)
-                f.GraphPane.AddCurve("p" + i, pos[i].Key, pos[i].Value, Color.FromArgb(0, (int)Math.Round(255.0*(1.0-i/(double)pos.Length)),0));
+            {
+                var item = pos[i];
+                f.GraphPane.AddCurve(item.Name, item.X, item.Y,
+                    Color.FromArgb(0, (int) Math.Round(255.0*(1.0 - i/(double) pos.Length)), 0));
+                Console.WriteLine(item.Name + ", cnt:" + item.Count + ", area=" + item.Area.ToString("F4"));
+            }
+            Console.WriteLine("negative:");
             for (int i = 0; i < neg.Length; i++)
-                f.GraphPane.AddCurve("n" + i, neg[i].Key, neg[i].Value, Color.FromArgb(0, 0, (int)Math.Round(255.0 * (1.0 - i / (double)neg.Length))));
+            {
+                var item = neg[i];
+
+                f.GraphPane.AddCurve(item.Name, item.X, item.Y,
+                    Color.FromArgb(0, 0, (int) Math.Round(255.0*(1.0 - i/(double) neg.Length))));
+                Console.WriteLine(item.Name + ", cnt:" + item.Count + ", area=" + item.Area.ToString("F4"));
+            }
+            if (spc != null)
+            {
+                Console.WriteLine("custom:");
+                for (int i = 0; i < spc.Length; i++)
+                {
+                    var item = spc[i];
+                    f.GraphPane.AddCurve(item.Name, item.X, item.Y,
+                        Color.FromArgb((int) Math.Round(255.0*(1.0 - i/(double) spc.Length)), 0, 0));
+                    Console.WriteLine(item.Name + ", cnt:" + item.Count + ", area=" + item.Area.ToString("F4"));
+                }
+            }
             form.Controls.Add(f);
             f.AxisChange();
             f.Invalidate();
             Application.Run(form);
+            
         }
 
         #endregion GetROC
@@ -374,9 +472,37 @@ namespace Sandbox
             Motiff[] mfNoise;
             GetMotiffs(new GetMotiffsParams(), elPeaks, elNoise, out mfPeaks, out mfNoise);
 
+            var lineGgc = new []{Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.C,Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.C,Nucleotide.T};
+            var lineGcc = new []{Nucleotide.T, Nucleotide.G, Nucleotide.C, Nucleotide.C,Nucleotide.T, Nucleotide.G, Nucleotide.C, Nucleotide.C,Nucleotide.T};
+            var linecGc = new []{Nucleotide.T, Nucleotide.C, Nucleotide.G, Nucleotide.C,Nucleotide.T, Nucleotide.C, Nucleotide.G, Nucleotide.C,Nucleotide.T};
+            var lineGgg = new[] { Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.G, Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.G, Nucleotide.T};
+            var lineGgcGcc = new[] { Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.C, Nucleotide.T, Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.T};
+
+            Motiff[] mfSpec = 
+            {
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 100}),
+
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 1000}),
+
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 1000, 100, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 1000, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 1000}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 1000, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 1000}),
+
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg, lineGgcGcc}, new[] {100, 100, 100, 100, 1000}),
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
+            };
+
+
             //  4. Построить ROC-кривую по обучающей хромосоме
             DrawROC(mfPeaks.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray(),
-                    mfNoise.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray());
+                    mfNoise.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray(),
+                    mfSpec.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray());
 
             Console.WriteLine("fin");
 	        Console.ReadKey();
@@ -410,7 +536,8 @@ namespace Sandbox
 			Console.WriteLine("origFactor=" + cntOrig + ", transFactor=" + Math.Round((double)origLen * cntTrans / cmp.StrokeSize, 3));
 		}
 
-		static void Main(string[] args)
+        [STAThreadAttribute]
+		static void Main()
 		{
 		    MainPlan();
 			Console.WriteLine("Ok\nPress any key to exit");
@@ -418,102 +545,102 @@ namespace Sandbox
 		}
 
 
-        #region trash
-        static void CheckChr1()
-	    {
-            var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
-            Debug.Assert(chr != null);
-	    }
+        //#region trash
+        //static void CheckChr1()
+        //{
+        //    var chr = ChrManager.GetChromosome(ChromosomeEnum.Chr1);
+        //    Debug.Assert(chr != null);
+        //}
 
-	    static void GetExpDataForCsv()
-	    {
-            var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
-            var exp1 = DNaseIManager.GetSensitivityResults(pars1, ChromosomeEnum.Chr1);
-            using (var f1 = File.CreateText("broadPeak.srt1.csv"))
-            {
-                foreach (var item in exp1.Items.OrderBy(p => -p.Value1))
-                    f1.WriteLine(item.Value1 + "; " + item.Value2);
-                f1.Flush();
-            }
-            using (var f2 = File.CreateText("broadPeak.srt2.csv"))
-            {
-                foreach (var item in exp1.Items.OrderBy(p => -p.Value2))
-                    f2.WriteLine(item.Value2 + "; " + item.Value1);
-                f2.Flush();
-            }
-	    }
+        //static void GetExpDataForCsv()
+        //{
+        //    var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
+        //    var exp1 = DNaseIManager.GetSensitivityResults(pars1, ChromosomeEnum.Chr1);
+        //    using (var f1 = File.CreateText("broadPeak.srt1.csv"))
+        //    {
+        //        foreach (var item in exp1.Items.OrderBy(p => -p.Value1))
+        //            f1.WriteLine(item.Value1 + "; " + item.Value2);
+        //        f1.Flush();
+        //    }
+        //    using (var f2 = File.CreateText("broadPeak.srt2.csv"))
+        //    {
+        //        foreach (var item in exp1.Items.OrderBy(p => -p.Value2))
+        //            f2.WriteLine(item.Value2 + "; " + item.Value1);
+        //        f2.Flush();
+        //    }
+        //}
 
-        static void GetClassifiedExpData()
-        {
-            var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
-            var exp1 = DNaseIManager.GetClassifiedRegions(ChromosomeEnum.Chr1, pars1, true);
-            Debug.Assert(exp1.Count == 3);
-            var statP = exp1[ClassifiedRegion.MotifContainsStatus.Present].Select(p => p.RawValue2).MinMeanMax();
-            var statN = exp1[ClassifiedRegion.MotifContainsStatus.NotPresent].Select(p => p.RawValue2).MinMeanMax();
-            var statU = exp1[ClassifiedRegion.MotifContainsStatus.Unknown].Select(p => p.RawValue2).MinMeanMax();
-            Debug.Assert(exp1.Count == 3);
-        }
+        //static void GetClassifiedExpData()
+        //{
+        //    var pars1 = new Dictionary<string, string> { { "type", "broadPeak" }, { "cell", "A549" }, { "replicate", "1" } };
+        //    var exp1 = DNaseIManager.GetClassifiedRegions(ChromosomeEnum.Chr1, pars1, true);
+        //    Debug.Assert(exp1.Count == 3);
+        //    var statP = exp1[ClassifiedRegion.MotifContainsStatus.Present].Select(p => p.RawValue2).MinMeanMax();
+        //    var statN = exp1[ClassifiedRegion.MotifContainsStatus.NotPresent].Select(p => p.RawValue2).MinMeanMax();
+        //    var statU = exp1[ClassifiedRegion.MotifContainsStatus.Unknown].Select(p => p.RawValue2).MinMeanMax();
+        //    Debug.Assert(exp1.Count == 3);
+        //}
 
-        static void DrawForm()
-        {
+        //static void DrawForm()
+        //{
 
-            // * Вывести на экран простенькую форму с графиком
-            // * Научиться выводить график нужного вида + научиться экспортировать в eps.
-            // * Автоматизировать процесс, вывести вывод графиков в отдельную библиотеку
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            var form = new Form { Width = 800, Height = 600 };
+        //    // * Вывести на экран простенькую форму с графиком
+        //    // * Научиться выводить график нужного вида + научиться экспортировать в eps.
+        //    // * Автоматизировать процесс, вывести вывод графиков в отдельную библиотеку
+        //    Application.EnableVisualStyles();
+        //    Application.SetCompatibleTextRenderingDefault(false);
+        //    var form = new Form { Width = 800, Height = 600 };
 
-            var f = new ZedGraphControl
-            {
-                Anchor = AnchorStyles.Top,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Fill
-            };
+        //    var f = new ZedGraphControl
+        //    {
+        //        Anchor = AnchorStyles.Top,
+        //        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        //        Dock = DockStyle.Fill
+        //    };
 
-            var yaxis = f.GraphPane.YAxis;
-            yaxis.Type = AxisType.Log;
-            yaxis.Scale.MaxAuto = false;
-            yaxis.Scale.MinAuto = false;
-            yaxis.Scale.Max = 1e+3;
-            yaxis.Scale.Min = 1e-1;
+        //    var yaxis = f.GraphPane.YAxis;
+        //    yaxis.Type = AxisType.Log;
+        //    yaxis.Scale.MaxAuto = false;
+        //    yaxis.Scale.MinAuto = false;
+        //    yaxis.Scale.Max = 1e+3;
+        //    yaxis.Scale.Min = 1e-1;
 
-            var xaxis = f.GraphPane.XAxis;
-            xaxis.Scale.MaxAuto = false;
-            xaxis.Scale.MinAuto = false;
-            xaxis.Scale.Max = 110;
-            xaxis.Scale.Min = -10;
-            xaxis.Type = AxisType.LinearAsOrdinal;
+        //    var xaxis = f.GraphPane.XAxis;
+        //    xaxis.Scale.MaxAuto = false;
+        //    xaxis.Scale.MinAuto = false;
+        //    xaxis.Scale.Max = 110;
+        //    xaxis.Scale.Min = -10;
+        //    xaxis.Type = AxisType.LinearAsOrdinal;
 
-            var grow = Enumerable.Range(1, 10).Select(p => (double)p * p).ToArray();
-            var grow2 = Enumerable.Range(1, 10).Select(p => (double)p * p / 2.0).ToArray();
-            var grow3 = Enumerable.Range(1, 10).Select(p => (double)p * p / 4.0).ToArray();
+        //    var grow = Enumerable.Range(1, 10).Select(p => (double)p * p).ToArray();
+        //    var grow2 = Enumerable.Range(1, 10).Select(p => (double)p * p / 2.0).ToArray();
+        //    var grow3 = Enumerable.Range(1, 10).Select(p => (double)p * p / 4.0).ToArray();
 
-            var growx = Enumerable.Range(1, 10).Select(p => (double)p * p + 0.5).ToArray();
+        //    var growx = Enumerable.Range(1, 10).Select(p => (double)p * p + 0.5).ToArray();
 
-            f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
-            f.GraphPane.BarSettings.MinBarGap = 1000;
+        //    f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
+        //    f.GraphPane.BarSettings.MinBarGap = 1000;
 
-            var bar1 = f.GraphPane.AddBar("bar", grow, grow, Color.Blue);
-            var bar2 = f.GraphPane.AddBar("bar2", grow, grow2, Color.Red);
-            var bar3 = f.GraphPane.AddBar("bar3", growx, grow3, Color.Green);
+        //    var bar1 = f.GraphPane.AddBar("bar", grow, grow, Color.Blue);
+        //    var bar2 = f.GraphPane.AddBar("bar2", grow, grow2, Color.Red);
+        //    var bar3 = f.GraphPane.AddBar("bar3", growx, grow3, Color.Green);
 
-            bar1.Bar.Fill.Type = FillType.Brush;
-            bar1.Bar.Border.IsVisible = false;
-            bar2.Bar.Fill.Type = FillType.Solid;
-            bar2.Bar.Border.IsVisible = false;
-            bar3.Bar.Fill.Type = FillType.GradientByY;
-            bar3.Bar.Border.IsVisible = false;
+        //    bar1.Bar.Fill.Type = FillType.Brush;
+        //    bar1.Bar.Border.IsVisible = false;
+        //    bar2.Bar.Fill.Type = FillType.Solid;
+        //    bar2.Bar.Border.IsVisible = false;
+        //    bar3.Bar.Fill.Type = FillType.GradientByY;
+        //    bar3.Bar.Border.IsVisible = false;
 
-            form.Controls.Add(f);
+        //    form.Controls.Add(f);
 
-            f.AxisChange();
-            f.Invalidate();
+        //    f.AxisChange();
+        //    f.Invalidate();
 
-            Application.Run(form);
-        }
+        //    Application.Run(form);
+        //}
 
         
-        #endregion trash
+        //#endregion trash
     }
 }

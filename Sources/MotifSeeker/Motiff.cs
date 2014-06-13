@@ -8,6 +8,29 @@ namespace MotifSeeker
 {
     public class Motiff
     {
+        public enum CalcMode
+        {
+            /// <summary>
+            /// Жёсткий режим. Старается отсечь маловероятные совпадения.
+            /// </summary>
+            Strict = 1,
+
+            /// <summary>
+            /// Мягкий режим. Старается не отсекать маловероятные совпадения.
+            /// </summary>
+            Eps = 2,
+
+            /// <summary>
+            /// Степенной режим. Старается точнее учесть вероятности посредством степенного закона.
+            /// </summary>
+            Degree = 3
+        }
+
+        /// <summary>
+        /// Алгоритм вычисления сходства по-умолчанию.
+        /// </summary>
+        public static CalcMode DefaultCalcMode = CalcMode.Degree;
+
         /// <summary>
         /// Простейщее представление мотива. N - нуклеотид содержится минимум в половине случаев, n - в трети, ? - нет явного победителя.
         /// </summary>
@@ -37,11 +60,13 @@ namespace MotifSeeker
         /// <summary>
         /// Создаёт мотив по выровненным цепочкам.
         /// </summary>
-        public static Motiff ExtractMotiff(Nucleotide[][] map, int[] mapFactor)
+        public static Motiff ExtractMotiff(Nucleotide[][] map, int[] mapFactor = null)
         {
             bool started = false;
             var len = map.Max(p => p.Length);
             var freq = new List<int[]>();
+            if (mapFactor == null)
+                mapFactor = Enumerable.Repeat(1, map.Length).ToArray();
             var cnt = mapFactor.Sum();
             for (int i = 0; i < len; i++)
             {
@@ -77,6 +102,14 @@ namespace MotifSeeker
             Norm = freq.Select(p => p.Sum()).ToArray();
             MaskStr = maskStr;
             CalcScoreNormFactor = 1.0 / Freq.Aggregate(1.0, (a, b) => a * b.Max());
+
+            CalcDegreeScoreNormFactor = 1.0 / Freq.Zip(Norm, (fr, norm) => new { fr, norm })
+                                                  .Aggregate(1.0, (ac, b) =>
+                                                  {
+                                                      var max = b.fr.Max();
+                                                      var sum = b.norm;
+                                                      return ac*(sum != cnt ? Math.Pow(max, sum/(double) cnt) : max);
+                                                  });
         }
 
         private static char GetMaskChar(int[] freq, int cnt)
@@ -100,12 +133,17 @@ namespace MotifSeeker
 
         public readonly double CalcScoreNormFactor;
 
+        public readonly double CalcDegreeScoreNormFactor;
+
 
         /// <summary>
         /// Вычисляет коэффициент близости.
+        /// Пороговый алгоритм:
+        /// * Если задано All, то берёт наименее вероятный нуклеотид;
+        /// * Если нуклеотид не встречался, то считает, что тот встречался хоть раз.
         /// </summary>
         /// <returns>1 - точное совпадение, 0 - отсутствие совпадения.</returns>
-        public double CalcScore(Nucleotide[] data, int pos)
+        public double CalcScoreEps(Nucleotide[] data, int pos)
         {
             var ret = 1.0;
             if (pos < 0 || data.Length <= pos + Length)
@@ -115,13 +153,78 @@ namespace MotifSeeker
                 var d = data[pos + i];
                 var c = (d == Nucleotide.All) ? Freq[i].Min() : Freq[i][(byte) d];
                 if (c == 0)
-                    c = 1;//return 0;
+                    c = 1;
                 ret *= c;
             }
             return ret*CalcScoreNormFactor;
         }
 
-        public double CalcMaxScore(Nucleotide[] data)
+        /// <summary>
+        /// Вычисляет коэффициент близости.
+        /// Жёсткий алгоритм:
+        /// * Если задано All, то берёт наименее вероятный нуклеотид;
+        /// * Если нуклеотид не встречался, то считает, что совпадения вообще нет.
+        /// </summary>
+        /// <returns>1 - точное совпадение, 0 - отсутствие совпадения.</returns>
+        public double CalcScoreStrict(Nucleotide[] data, int pos)
+        {
+            var ret = 1.0;
+            if (pos < 0 || data.Length <= pos + Length)
+                return 0;
+            for (int i = 0; i < Length; i++)
+            {
+                var d = data[pos + i];
+                var c = (d == Nucleotide.All) ? Freq[i].Min() : Freq[i][(byte)d];
+                if (c == 0)
+                    return 0;
+                ret *= c;
+            }
+            return ret * CalcScoreNormFactor;
+        }
+
+        /// <summary>
+        /// Вычисляет коэффициент близости.
+        /// Степенной алгоритм:
+        /// * Если задано All, то берёт наименее вероятный нуклеотид;
+        /// * Если нуклеотид не встречался, то считает, что совпадения вообще нет.
+        /// * Если в конкретной позиции при формировании распределения участвовали не все элементарные мотивы, то сокращает вклад степенным алгоритмом.
+        /// </summary>
+        /// <returns>1 - точное совпадение, 0 - отсутствие совпадения.</returns>
+        public double CalcScoreDegree(Nucleotide[] data, int pos)
+        {
+            var ret = 1.0;
+            if (pos < 0 || data.Length <= pos + Length)
+                return 0;
+            for (int i = 0; i < Length; i++)
+            {
+                var d = data[pos + i];
+                var c = (double)((d == Nucleotide.All) ? Freq[i].Min() : Freq[i][(byte)d]);
+                if (c <= 0)
+                    c = 0.1;
+                var n = Norm[i];
+                if (n != Count)
+                    c = Math.Pow(c, n/(double) Count);
+                ret *= c;
+            }
+            return ret * CalcDegreeScoreNormFactor;
+        }
+
+        public double CalcScore(Nucleotide[] data, int pos, CalcMode? mode)
+        {
+            switch (mode ?? DefaultCalcMode)
+            {
+                case CalcMode.Degree:
+                    return CalcScoreDegree(data, pos);
+                case CalcMode.Eps:
+                    return CalcScoreEps(data, pos);
+                case CalcMode.Strict:
+                    return CalcScoreStrict(data, pos);
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        public double CalcMaxScore(Nucleotide[] data, CalcMode? mode = null)
         {
             var ret = 0.0;
             foreach (Direction direction in Enum.GetValues(typeof (Direction)))
@@ -129,7 +232,7 @@ namespace MotifSeeker
                 var b = data.GetChain(direction);
                 for (int i = 0; i < data.Length - Length; i++)
                 {
-                    var tmp = CalcScore(b, i);
+                    var tmp = CalcScore(b, i, mode);
                     if (tmp > ret)
                         ret = tmp;
                 }
@@ -138,19 +241,19 @@ namespace MotifSeeker
             return ret;
         }
 
-        public double[] CalcMaxScore(Nucleotide[][] data)
+        public double[] CalcMaxScore(Nucleotide[][] data, CalcMode? mode = null)
         {
-            return data.Select(CalcMaxScore).ToArray();
+            return data.Select(p => CalcMaxScore(p, mode)).ToArray();
         }
 
-        public double CalcMaxScore(Nucleotide[] data, int startPos, int endPos)
+        public double CalcMaxScore(Nucleotide[] data, int startPos, int endPos, CalcMode? mode = null)
         {
             Debug.Assert(startPos > 0);
             var ret = 0.0;
             var end = Math.Min(data.Length - Length, endPos);
             for (int i = startPos; i < end; i++)
             {
-                var tmp = CalcScore(data, i);
+                var tmp = CalcScore(data, i, mode);
                 if (tmp > ret)
                     ret = tmp;
             }

@@ -133,7 +133,7 @@ namespace MotifSeeker.Data.Dna
 				case 'c':
 				case 'C':
 					return Nucleotide.C;
-				case 'N':
+				case 'N': case 'n':
 					return Nucleotide.A;
 				default:
 					throw new NotSupportedException("Неизвестный идентификатор '" + c + "'");
