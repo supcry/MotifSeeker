@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
+using MotifSeeker.Motiff;
 using MotifSeeker.Sfx;
 using ZedGraph;
 
@@ -158,6 +159,11 @@ namespace Sandbox
             /// Минимальный размер слитых цепочек (в нуклеотидах).
             /// </summary>
 	        public int MinGroupSize = 10;
+
+            /// <summary>
+            /// Отбросить те элементы, которые встречаются одновременно и в пиках и в шумах.
+            /// </summary>
+            public bool DropCross = true;
 	    }
 
         /// <summary>
@@ -201,6 +207,16 @@ namespace Sandbox
                 TransTest(sfxPeaks.StrokeSize, elPeaks.Take(10), sfxNoise);
                 Console.WriteLine("TransTest (empty on peaks)");
                 TransTest(sfxNoise.StrokeSize, elNoise.Take(10), sfxPeaks);
+            }
+            if (pars.DropCross)
+            {
+                var pc = elPeaks.Length;
+                var nc = elNoise.Length;
+                Console.WriteLine("Drop cross elements:");
+                //elPeaks = elPeaks.Where(p => sfxNoise.GetAllCites(p.Chain, p.Chain.Length).Count() < p.Count/2).ToArray();
+                //Console.WriteLine("\tpeaks - was:" + pc + ", now:" + elPeaks.Length + ", dropped=" + (pc - elPeaks.Length));
+                elNoise = elNoise.Where(p => sfxPeaks.GetAllCites(p.Chain, p.Chain.Length).Count() < /*p.Count / 2*/1).ToArray();
+                Console.WriteLine("\tnoise - was:" + nc + ", now:" + elNoise.Length + ", dropped=" + (nc - elNoise.Length));
             }
 	    }
         #endregion  GetCandidateElements
@@ -290,41 +306,48 @@ namespace Sandbox
             /// </summary>
 	        public double Area;
 
-	        public RocCurve(string name, int count, double[] x, double[] y)
+            public IMotiff Motiff;
+
+	        public RocCurve(string name, int count, double[] x, double[] y, IMotiff mf)
 	        {
 	            Name = name;
 	            Count = count;
 	            X = x;
 	            Y = y;
-
-	            double lastX = 0;
-	            double lastY = 0;
-	            double area = 0;
-	            for (int i = 0; i < x.Length; i++)
-	            {
-	                if (lastX >= x[i])
-	                    continue;
-	                var dx = x[i] - lastX;
-	                var dy = y[i] - lastY;
-	                var yy = lastY;
-	                var area1 = yy*dx + dy*dx/2.0;
-	                area += area1;
-	                lastX = x[i];
-	                lastY = y[i];
-	            }
-	            if (lastX < 100.0)
-	            {
-                    var dx = 100.0 - lastX;
-                    var dy = 100.0 - lastY;
-                    var yy = lastY;
-                    var area1 = yy * dx + dy * dx / 2.0;
-                    area += area1;
-	            }
-	            Area = area/10000.0;
+                Area = CalcArea(x.Reverse().ToArray(), y.Reverse().ToArray());
+	            Motiff = mf;
 	        }
 	    }
 
-        public static RocCurve GetROC(GetRocParams pars, Region[] rgPeaks, Region[] rgNoises, Motiff motiff)
+	    private static double CalcArea(double[] x, double[] y)
+	    {
+            double lastX = 0;
+            double lastY = 0;
+            double area = 0;
+            for (int i = 0; i < x.Length; i++)
+            {
+                if (Math.Abs(lastX - x[i]) < 0.000001 && i == 0)
+                    continue;
+                var dx = x[i] - lastX;
+                var dy = y[i] - lastY;
+                var yy = lastY;
+                var area1 = yy * dx + dy * dx / 2.0;
+                area += area1;
+                lastX = x[i];
+                lastY = y[i];
+            }
+            if (lastX < 100.0)
+            {
+                var dx = 100.0 - lastX;
+                var dy = 100.0 - lastY;
+                var yy = lastY;
+                var area1 = yy * dx + dy * dx / 2.0;
+                area += area1;
+            }
+            return area / 10000.0;
+	    }
+
+        public static RocCurve GetROC(GetRocParams pars, Region[] rgPeaks, Region[] rgNoises, IMotiff motiff)
 	    {
             var chrDic = new Dictionary<ChromosomeEnum, Chromosome>();
             // подготовим данные для пиков
@@ -369,7 +392,7 @@ namespace Sandbox
                 y.Add(sensitivity);
                 x.Add(specifity);
             }
-            return new RocCurve(motiff.MaskStr, motiff.Count, x.ToArray(), y.ToArray());
+            return new RocCurve(motiff.ToString(), motiff.Count, x.ToArray(), y.ToArray(), motiff);
 	    }
 
 	    private static bool _drawInited;
@@ -400,7 +423,7 @@ namespace Sandbox
             yaxis.Scale.MinAuto = false;
             yaxis.Scale.Max = 100;
             yaxis.Scale.Min = 0;
-            yaxis.Title = new AxisLabel("txt", null, 10, Color.Black, false, false, false);
+            yaxis.Title = new AxisLabel("yyy ааа", "times", 12, Color.Black, false, false, false);
 
             var xaxis = f.GraphPane.XAxis;
             xaxis.Type = AxisType.Linear;
@@ -408,7 +431,7 @@ namespace Sandbox
             xaxis.Scale.MinAuto = false;
             xaxis.Scale.Max = 100;
             xaxis.Scale.Min = 0;
-            yaxis.Title = new AxisLabel("xxx", null, 10, Color.Black, false, false, false);
+            xaxis.Title = new AxisLabel("xxx БББ", "roman", 14, Color.Black, true, false, false);
 
             f.GraphPane.BarSettings.Type = BarType.SortedOverlay;
             f.GraphPane.BarSettings.MinBarGap = 1000;
@@ -495,14 +518,29 @@ namespace Sandbox
 
                 Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg, lineGgcGcc}, new[] {100, 100, 100, 100, 1000}),
                 Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
-                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100})
             };
 
+            var rocPeaks = mfPeaks.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
+            var rocNoise = mfNoise.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
+            var rocSpec = mfSpec.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
 
             //  4. Построить ROC-кривую по обучающей хромосоме
-            DrawROC(mfPeaks.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray(),
-                    mfNoise.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray(),
-                    mfSpec.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray());
+            DrawROC(rocPeaks,rocNoise,rocSpec);
+
+            // 5. Построить ROC-кривую по подсмотренным данным
+
+            var mfDiffAll = new DiffMotiff(mfPeaks, mfNoise);
+            var rocFlow = rocPeaks.Concat(rocNoise)
+                                  .Concat(rocSpec)
+                                  .ToArray();
+            var mfDiffBest = new DiffMotiff(rocFlow.OrderByDescending(p => p.Area).Take(2).Select(p => (Motiff)p.Motiff).ToArray(),
+                                            rocFlow.OrderBy(p => p.Area).Take(2).Select(p => (Motiff)p.Motiff).ToArray());
+
+            var rocDiffAll = new[] { mfDiffAll }.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
+            var rocDiffBest = new[] { mfDiffBest }.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
+
+            DrawROC(rocDiffAll, rocDiffBest);
 
             Console.WriteLine("fin");
 	        Console.ReadKey();

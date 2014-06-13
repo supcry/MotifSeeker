@@ -4,28 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using MotifSeeker.Data.Dna;
 
-namespace MotifSeeker
+namespace MotifSeeker.Motiff
 {
-    public class Motiff
+    public class Motiff : IMotiff
     {
-        public enum CalcMode
-        {
-            /// <summary>
-            /// Жёсткий режим. Старается отсечь маловероятные совпадения.
-            /// </summary>
-            Strict = 1,
-
-            /// <summary>
-            /// Мягкий режим. Старается не отсекать маловероятные совпадения.
-            /// </summary>
-            Eps = 2,
-
-            /// <summary>
-            /// Степенной режим. Старается точнее учесть вероятности посредством степенного закона.
-            /// </summary>
-            Degree = 3
-        }
-
         /// <summary>
         /// Алгоритм вычисления сходства по-умолчанию.
         /// </summary>
@@ -49,7 +31,7 @@ namespace MotifSeeker
         /// <summary>
         /// На скольких элементарных мотивах построен этот вероятностный мотив.
         /// </summary>
-        public readonly int Count;
+        public int Count { get; private set; }
 
         /// <summary>
         /// Длина мотива в нуклеотидах.
