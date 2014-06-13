@@ -57,6 +57,11 @@ namespace MotifSeeker.Data.Dna
             return (Nucleotide) b;
         }
 
+        public static byte ToByte(this Nucleotide b)
+        {
+            return (byte)b;
+        }
+
         public static Nucleotide Inverse(this Nucleotide n)
         {
             switch (n)

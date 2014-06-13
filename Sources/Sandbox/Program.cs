@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
+using MotifSeeker.Ga;
 using MotifSeeker.Motiff;
 using MotifSeeker.Sfx;
 using ZedGraph;
@@ -146,6 +147,46 @@ namespace Sandbox
             noises = noiseRegions.ToArray();
 	    }
         #endregion regions
+
+        #region BuildSfx
+
+        public class GetSfxParams
+        {
+            /// <summary>
+            /// Минимальный размер слитых цепочек (в нуклеотидах).
+            /// </summary>
+            public int MinGroupSize = 10;
+        }
+
+	    private static void GetSfx(GetSfxParams pars, IEnumerable<Region> peaks, IEnumerable<Region> noises, 
+                                   out TextComparer posComp, out TextComparer negComp)
+	    {
+	        var t = DateTime.Now;
+	        var chrDic = new Dictionary<ChromosomeEnum, Chromosome>();
+
+	        // peaks
+	        var peaksTmp = peaks.Select(p =>
+	        {
+	            if (!chrDic.ContainsKey(p.Chr))
+	                chrDic.Add(p.Chr, ChrManager.GetChromosome(p.Chr));
+	            return chrDic[p.Chr].GetPack(p.Start, p.Size);
+	        }).ToArray();
+	        TextComparer sfxPeaks = SuffixBuilder.BuildMany2(peaksTmp, pars.MinGroupSize);
+	        Console.WriteLine("Peaks sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxPeaks.StrokeSize);
+	        // noise
+	        var noiseTmp = noises.Select(p =>
+	        {
+	            if (!chrDic.ContainsKey(p.Chr))
+	                chrDic.Add(p.Chr, ChrManager.GetChromosome(p.Chr));
+	            return chrDic[p.Chr].GetPack(p.Start, p.Size);
+	        }).ToArray();
+	        TextComparer sfxNoise = SuffixBuilder.BuildMany2(noiseTmp, pars.MinGroupSize);
+	        Console.WriteLine("Noise sfx build, dt=" + (DateTime.Now - t) + ", size=" + sfxNoise.StrokeSize);
+	        posComp = sfxPeaks;
+	        negComp = sfxNoise;
+	    }
+
+	    #endregion BuildSfx
 
         #region  GetCandidateElements
         public class GetCandidateElementsParams
@@ -546,6 +587,34 @@ namespace Sandbox
 	        Console.ReadKey();
 	    }
 
+        static void GaPlan()
+        {
+            // План:
+            //  1. получить последовательности участков с пиками и без пиков
+            Region[] peaksPos;
+            Region[] noisePos;
+            GetRegions(new GetRegionParams(), out peaksPos, out noisePos);
+
+            //  2. построить суффиксы по участкам с пиками и без пиков, выделить склеенные цепочки
+            //     удостовериться, что участки в обоих суф.структурах находятся.
+            TextComparer posComparer;
+            TextComparer negComparer;
+            GetSfx(new GetSfxParams(), peaksPos, noisePos, out posComparer, out negComparer);
+
+            var ga = new SimpleGa(posComparer, negComparer, new SimpleGa.SimpleGaParams{PopSize = 300, SpiceLen = 9});
+            while (!ga.Finished)
+            {
+                var r = ga.Iter();
+                if (r && ga.BestSpice.Score.IsInteresting)
+                {
+                    Console.WriteLine("spice: " + ga.BestSpice + ", score=" + ga.BestSpice.Score);
+                }
+            }
+
+            Console.WriteLine("fin");
+            Console.ReadKey();
+        }
+
 	    static void TransMotiffTest(IEnumerable<Motiff> ms, MultiAlignmentResult[] rs, string name)
 	    {
             Console.WriteLine("TransMotiffTest(" + name + ")");
@@ -576,8 +645,9 @@ namespace Sandbox
 
         [STAThreadAttribute]
 		static void Main()
-		{
-		    MainPlan();
+        {
+            GaPlan();
+		    //MainPlan();
 			Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 		}

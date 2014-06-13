@@ -12,7 +12,7 @@ namespace MotifSeeker.Sfx
     {
         protected readonly byte[] _docHashes;
 
-        protected Pointer _pointer;
+        //protected Pointer _pointer;
         protected SuffixArray _suffixArray;
 
         protected TextComparerBase(byte[] docHashes)
@@ -47,7 +47,7 @@ namespace MotifSeeker.Sfx
 			Array.Resize(ref hashes, hashes.Length + 1);
             
             hashes[hashes.Length - 1] = byte.MaxValue - 1; // todo перенести в textInfo)
-            List<SubPointer> list = FindSubStringsByCheckDoc(hashes, minSubstrLength);
+            var list = FindSubStringsByCheckDoc(hashes, minSubstrLength);
             var result = FindAllSubStrs(list, minSubstrLength);
 
             result.Sort(new SuffixSubstrComparеrByChkIdx());
@@ -71,23 +71,23 @@ namespace MotifSeeker.Sfx
             var docLength = DocHashesLength - 1;
             var sa = _suffixArray;
 
-            _pointer = new Pointer(0, 0, docLength);
+            var pointer = new Pointer(0, 0, docLength);
 
             var right = 0;
             for (int left = 0; left < hashes.Length; left++)
             {
-                while (sa.PointerDown(_pointer, hashes[right], right - left))
+                while (sa.PointerDown(pointer, hashes[right], right - left))
                     right++;
 
 
                 if (right - left >= minSubstrLength)
-                    list.Add(new SubPointer(_pointer, left, right - left));
+                    list.Add(new SubPointer(pointer, left, right - left));
 
-                sa.UseSuffixLink(_pointer);
+                sa.UseSuffixLink(pointer);
 
                 while (
-                    !((_pointer.Depth + 1 >= right - left) ||
-                      !sa.PointerDownByLink(_pointer, hashes[left + _pointer.Depth + 1], right - left)))
+                    !((pointer.Depth + 1 >= right - left) ||
+                      !sa.PointerDownByLink(pointer, hashes[left + pointer.Depth + 1], right - left)))
                 {
                 }
 

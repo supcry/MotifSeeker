@@ -28,6 +28,12 @@ namespace MotifSeeker
                     yield break;
                 }
             }
+        }
+
+        public static IEnumerable<int> GetShuffleFlow(this Random rnd, int cnt)
+        {
+            var ids = Enumerable.Range(0, cnt);
+            return GetShuffleFlow(rnd, ids);
         } 
     }
 }

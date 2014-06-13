@@ -61,11 +61,17 @@
     <Compile Include="Data\DNaseI\SensitivityResults.cs" />
     <Compile Include="Data\Dna\ChrManager.cs" />
     <Compile Include="Data\Dna\Nucleotide.cs" />
+    <Compile Include="Ga\BiCombi.cs" />
+    <Compile Include="Ga\InfoCombi.cs" />
+    <Compile Include="Ga\Score.cs" />
+    <Compile Include="Ga\SimpleGa.cs" />
+    <Compile Include="Ga\Spice.cs" />
     <Compile Include="Graph\MergedBarGraph.cs" />
     <Compile Include="Helpers\StaticDictionary.cs" />
     <Compile Include="LinqExt.cs" />
     <Compile Include="Modularity.cs" />
     <Compile Include="Motiff\CalcMode.cs" />
+    <Compile Include="Motiff\SpreadMotiff.cs" />
     <Compile Include="Motiff\IMotiff.cs" />
     <Compile Include="Motiff\DiffMotif.cs" />
     <Compile Include="Motiff\Motiff.cs" />
