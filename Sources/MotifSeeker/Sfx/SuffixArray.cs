@@ -216,7 +216,7 @@ namespace MotifSeeker.Sfx
 			}
 		    if (ret.Take(3).All(p => p == 3))// Отбросим все CCC...
 		        return null;
-			var thr = cnt/2;
+			var thr = 2*cnt/3;
 			return tmp.Any(p => p >= thr) ? null : ret;
 		}
 
@@ -244,21 +244,6 @@ namespace MotifSeeker.Sfx
 					return;
 				}
 			}
-			//var str = new byte[size];
-			//Array.Copy(_hashes, pos[0], str, 0, size);
-			//if (str.Count(p => p == 3) >= str.Length/2) // отбросим все совпадения, где заведомо много N
-			//	return;
-			//if (str.Count(p => p == 0) >= str.Length/2) // отбросим все совпадения, где заведомо много N
-			//	return;
-//#if DEBUG
-//			for (int i = 1; i < pos.Length; i++)
-//			{
-//				var str2 = new byte[size];
-//				Array.Copy(_hashes, pos[i], str2, 0, size);
-//				for(var k=0;k<size;k++)
-//					Debug.Assert(str[k] == str2[k]);
-//			}
-//#endif
 			// сформируем группу и сохраним её
 			var group = new ElementGroup(str, pos);
 			_elementGroups.Add(group);

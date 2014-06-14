@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using MotifSeeker.Data.Dna;
 
 namespace MotifSeeker
@@ -227,13 +228,31 @@ namespace MotifSeeker
             var w = new int[map.Length][];
             for (int i = 0; i < map.Length; i++)
                 w[i] = new int[map.Length];
-            for (int i = 0; i < map.Length; i++)
-                for (int j = 0; j < i; j++)
-                {
-                    var a = Alignment.Align(map[i], map[j], i, j);
-                    w[i][j] = a.Weight;
-                    w[j][i] = a.Weight;
-                }
+
+            if (map.Length < 100)
+            {
+                for (int i = 0; i < map.Length; i++)
+                    for (int j = 0; j < i; j++)
+                    {
+                        var a = Alignment.Align(map[i], map[j], i, j);
+                        w[i][j] = a.Weight;
+                        w[j][i] = a.Weight;
+                    }
+            }
+            else
+            {
+                Parallel.ForEach(Enumerable.Range(0, map.Length),
+                    new ParallelOptions {MaxDegreeOfParallelism = 8},
+                    i =>
+                    {
+                        for (int j = 0; j < i; j++)
+                        {
+                            var a = Align(map[i], map[j], i, j);
+                            w[i][j] = a.Weight;
+                            w[j][i] = a.Weight;
+                        }
+                    });
+            }
             return w;
         }
     }

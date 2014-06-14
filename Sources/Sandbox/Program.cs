@@ -205,6 +205,7 @@ namespace Sandbox
             /// Отбросить те элементы, которые встречаются одновременно и в пиках и в шумах.
             /// </summary>
             public bool DropCross = true;
+
 	    }
 
         /// <summary>
@@ -421,6 +422,9 @@ namespace Sandbox
             var x = new List<double>();
             var y = new List<double>();
 
+            x.Add(100);
+            y.Add(100);
+
             for (double thr = 0.0; thr <= 1.0; thr += 1.0/pars.DeltaCounts)
             {
                 while (vsPeakId < vsPeak.Length && vsPeak[vsPeakId] < thr)
@@ -433,6 +437,8 @@ namespace Sandbox
                 y.Add(sensitivity);
                 x.Add(specifity);
             }
+            x.Add(0);
+            y.Add(0);
             return new RocCurve(motiff.ToString(), motiff.Count, x.ToArray(), y.ToArray(), motiff);
 	    }
 
@@ -542,24 +548,33 @@ namespace Sandbox
             var lineGgg = new[] { Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.G, Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.G, Nucleotide.T};
             var lineGgcGcc = new[] { Nucleotide.T, Nucleotide.G, Nucleotide.G, Nucleotide.C, Nucleotide.T, Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.T};
 
+            var lineGgCc = new[] { Nucleotide.G, Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.G, Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.G, Nucleotide.G };
+
+            var lineGcCg = new[] { Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.G, Nucleotide.G, Nucleotide.C, Nucleotide.C, Nucleotide.G, Nucleotide.G, Nucleotide.C};
+
             Motiff[] mfSpec = 
             {
-                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 100}),
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 100}),
 
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 1000}),
+
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 1000, 100, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 1000, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 1000}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 1000, 100}),
+                ////Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 1000}),
+
+                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg, lineGgcGcc}, new[] {100, 100, 100, 100, 1000}),
                 //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 100, 1000}),
+                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100}),
 
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 1000, 100, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 1000, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 100, 1000, 1000}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 1000, 100}),
-                //Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 1000}),
-
-                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg, lineGgcGcc}, new[] {100, 100, 100, 100, 1000}),
-                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {1000, 100, 100, 100}),
-                Motiff.ExtractMotiff(new[] {lineGgc, lineGcc, linecGc, lineGgg}, new[] {100, 1000, 100, 100})
+                //Motiff.ExtractMotiff(new[] {lineGgCc}, new[] {1}),
+                //Motiff.ExtractMotiff(new[] {lineGcCg}, new[] {1}),
+                
+                Motiff.ExtractMotiff(new[] {lineGcCg, lineGgCc}, new[] {1,1})
             };
 
             var rocPeaks = mfPeaks.Select(motiff => GetROC(new GetRocParams(), peaksPos, noisePos, motiff)).ToArray();
@@ -646,8 +661,8 @@ namespace Sandbox
         [STAThreadAttribute]
 		static void Main()
         {
-            GaPlan();
-		    //MainPlan();
+            //GaPlan();
+		    MainPlan();
 			Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 		}
