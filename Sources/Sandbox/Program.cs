@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using MotifSeeker;
 using MotifSeeker.Data.Dna;
 using MotifSeeker.Data.DNaseI;
@@ -661,8 +662,12 @@ namespace Sandbox
         [STAThreadAttribute]
 		static void Main()
         {
-            //GaPlan();
-		    MainPlan();
+            // GGCCGGCCGGC
+            // CGGCCGGCCGG
+            // p = 406, n = 218, inf=33
+            var inf1 = new Score(406, 218, 1024, 1024).Informativity;
+            GaPlan();
+		    //MainPlan();
 			Console.WriteLine("Ok\nPress any key to exit");
 			Console.ReadKey();
 		}

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotifSeeker.Test", "MotifSeeker.Test\MotifSeeker.Test.csproj", "{A1383877-2790-46F9-A1EC-AF713D79F400}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotifSeeker2", "MotifSeeker2\MotifSeeker2.csproj", "{AF3D4719-8512-417F-B6E3-08A5237B4DC0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{A1383877-2790-46F9-A1EC-AF713D79F400}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1383877-2790-46F9-A1EC-AF713D79F400}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1383877-2790-46F9-A1EC-AF713D79F400}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF3D4719-8512-417F-B6E3-08A5237B4DC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF3D4719-8512-417F-B6E3-08A5237B4DC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF3D4719-8512-417F-B6E3-08A5237B4DC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF3D4719-8512-417F-B6E3-08A5237B4DC0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
