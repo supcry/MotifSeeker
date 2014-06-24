@@ -4,9 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MotifSeeker2
+namespace MotifSeeker.Starter
 {
-    public class Chromosome
+    class Program
     {
+        static void Main(string[] args)
+        {
+        }
     }
 }

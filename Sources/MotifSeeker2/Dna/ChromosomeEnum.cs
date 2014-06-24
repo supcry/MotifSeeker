@@ -1,4 +1,4 @@
-﻿namespace MotifSeeker2
+﻿namespace MotifSeeker2.Dna
 {
 	public enum ChromosomeEnum
 	{

@@ -4,15 +4,17 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{AF3D4719-8512-417F-B6E3-08A5237B4DC0}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{BC20EE5D-B6C7-4956-9882-2F06A1749D7A}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MotifSeeker2</RootNamespace>
-    <AssemblyName>MotifSeeker2</AssemblyName>
+    <RootNamespace>MotifSeeker2.Starter</RootNamespace>
+    <AssemblyName>MotifSeeker2.Starter</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -20,8 +22,10 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -33,12 +37,8 @@
     <Reference Include="NLog">
       <HintPath>..\Libs\NLog.dll</HintPath>
     </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>..\Libs\protobuf-net.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -46,14 +46,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Dna\Chromosome.cs" />
-    <Compile Include="Dna\ChromosomeEnum.cs" />
-    <Compile Include="Dna\Direction.cs" />
-    <Compile Include="Helpers\Downloader.cs" />
-    <Compile Include="Dna\FastaReader.cs" />
-    <Compile Include="Dna\Nucleotide.cs" />
-    <Compile Include="Helpers\Logger.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MotifSeeker2\MotifSeeker2.csproj">
+      <Project>{af3d4719-8512-417f-b6e3-08a5237b4dc0}</Project>
+      <Name>MotifSeeker2</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

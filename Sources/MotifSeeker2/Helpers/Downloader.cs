@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
 
-namespace MotifSeeker2
+namespace MotifSeeker2.Helpers
 {
     /// <summary>
     /// Загружает и распаковывает файл из инета. Если тот уже загружен и распакован, то возвращает просто его локальный путь.
@@ -39,13 +40,17 @@ namespace MotifSeeker2
                 return ret;
             // загрузим из инета
             byte[] tmp;
+            Logs.Instance.Info(_remotePath + " downloading...");
+            var sw = Stopwatch.StartNew();
             using (var c = new WebClient())
                 tmp = c.DownloadData(_remotePath);
+            Logs.Instance.Info(_remotePath + " downloaded, dt=" + sw.Elapsed + ", len=" + tmp.Length);
             var tmpPath = Path.Combine(_localDir, fn + ".tmp");
             // подчистим временный файл, если тот остался с прошлой попытки
             File.Delete(tmpPath);
             if (isGz)
             {
+                sw.Restart();
                 // распакуем во временный файл
                 using (var gz = new GZipStream(new MemoryStream(tmp), CompressionMode.Decompress))
                 {
@@ -59,8 +64,11 @@ namespace MotifSeeker2
                             if (buf.Length != len)
                                 break;
                         }
+                        Logs.Instance.Info("Data unzipped, dt=" + sw.Elapsed + ", zipLen=" + tmp.Length + ", unzipLen=" + f.Length);
+                        f.Flush();
                     }
                 }
+                
             }
             else // запишем во временный файл
                 File.WriteAllBytes(tmpPath, tmp);
