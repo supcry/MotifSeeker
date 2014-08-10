@@ -217,7 +217,7 @@ namespace MotifSeeker2.Dna
                 Serializer.Serialize(s, this);
                 s.Flush();
                 sw.Stop();
-                Logs.Instance.Info(ChromosomeId + " serialized, dt=" + sw.Elapsed + ", len=" + s.Length);
+                Logs.Instance.Trace(ChromosomeId + " serialized, dt=" + sw.Elapsed.ToHuman() + ", len=" + s.Length.ToHuman());
                 return s.Length;
             }
         }
@@ -229,7 +229,7 @@ namespace MotifSeeker2.Dna
             {
                 var ret = Serializer.Deserialize<Chromosome>(f);
                 ret.SizesToMask();
-                Logs.Instance.Info(ret.ChromosomeId + " deserialized, dt=" + sw.Elapsed + ", len=" + f.Length);
+                Logs.Instance.Info(ret.ChromosomeId + " deserialized, dt=" + sw.Elapsed.ToHuman() + ", len=" + f.Length.ToHuman());
                 return ret;
             }
         }
@@ -258,8 +258,8 @@ namespace MotifSeeker2.Dna
             foreach (var f in faReader.ReadFlow())
                 chr.AddRange(f.Select(ToNucleotide).ToArray());
             Debug.Assert(faReader.Description == chIdStr);
-            
-            Logs.Instance.Info("FASTA to Chromosome converted, dt=" + sw.Elapsed + ", cpairs=" + chr.Count);
+
+            Logs.Instance.Trace("FASTA to Chromosome converted, dt=" + sw.Elapsed.ToHuman() + ", " + chr.Count.ToHuman("pairs"));
             chr.Serialize(protoPath);// сериализуем в свою заготовку на будущее
             return chr;
         }

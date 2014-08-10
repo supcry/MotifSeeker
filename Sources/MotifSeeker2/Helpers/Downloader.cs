@@ -40,11 +40,11 @@ namespace MotifSeeker2.Helpers
                 return ret;
             // загрузим из инета
             byte[] tmp;
-            Logs.Instance.Info(_remotePath + " downloading...");
+            Logs.Instance.Info("downloading\n\t" + _remotePath + "...");
             var sw = Stopwatch.StartNew();
             using (var c = new WebClient())
                 tmp = c.DownloadData(_remotePath);
-            Logs.Instance.Info(_remotePath + " downloaded, dt=" + sw.Elapsed + ", len=" + tmp.Length);
+            Logs.Instance.Info("downloaded, dt=" + sw.Elapsed.ToHuman() + ", len=" + tmp.Length.ToHuman() + "\n\t" + _remotePath);
             var tmpPath = Path.Combine(_localDir, fn + ".tmp");
             // подчистим временный файл, если тот остался с прошлой попытки
             File.Delete(tmpPath);
@@ -64,7 +64,7 @@ namespace MotifSeeker2.Helpers
                             if (buf.Length != len)
                                 break;
                         }
-                        Logs.Instance.Info("Data unzipped, dt=" + sw.Elapsed + ", zipLen=" + tmp.Length + ", unzipLen=" + f.Length);
+                        Logs.Instance.Trace("Data unzipped, dt=" + sw.Elapsed.ToHuman() + ", zipLen=" + tmp.Length.ToHuman() + ", unzipLen=" + f.Length.ToHuman());
                         f.Flush();
                     }
                 }
