@@ -53,8 +53,15 @@
     <Compile Include="Dna\FastaReader.cs" />
     <Compile Include="Dna\Nucleotide.cs" />
     <Compile Include="Helpers\HumanReadability.cs" />
+    <Compile Include="Helpers\LinqExt.cs" />
     <Compile Include="Helpers\Logger.cs" />
+    <Compile Include="Motif\IMotif.cs" />
+    <Compile Include="Motif\ProbMotif.cs" />
+    <Compile Include="Motif\StrictMotif.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Sfx\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
